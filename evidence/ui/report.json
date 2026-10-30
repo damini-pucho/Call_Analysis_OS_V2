@@ -1,0 +1,808 @@
+{
+  "when": "2026-10-30T09:59:14.735Z",
+  "base": "http://127.0.0.1:3200",
+  "passed": 100,
+  "failed": 0,
+  "results": [
+    {
+      "persona": "admin",
+      "path": "/overview",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-overview.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/calls",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-calls.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/upload",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-upload.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/analytics",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-analytics.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/analytics?tab=trends",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-analytics_tab_trends.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/analytics?tab=sop",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-analytics_tab_sop.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/analytics?tab=language",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-analytics_tab_language.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/classification",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-classification.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/direction",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-direction.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/compliance",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-compliance.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/agents",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-agents.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/agents/1011",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-agents_1011.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/training",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-training.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/customers",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-customers.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/sentiment",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-sentiment.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-company.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company?tab=config",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-company_tab_config.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company?tab=documents",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-company_tab_documents.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company?tab=rules",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-company_tab_rules.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company?tab=campaigns",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-company_tab_campaigns.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/crm",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-crm.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/team",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-team.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/settings",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-settings.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/notifications",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-notifications.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/profile",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-admin-profile.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/overview",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-overview.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/calls",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-calls.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/agents/1011",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-agents_1011.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/training",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-training.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/company",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-company.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/profile",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-executive-profile.png"
+    },
+    {
+      "persona": "platform",
+      "path": "/platform",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-platform-platform.png"
+    },
+    {
+      "persona": "public",
+      "path": "/login",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-public-login.png"
+    },
+    {
+      "persona": "public",
+      "path": "/signup",
+      "view": "desktop",
+      "ok": true,
+      "problems": [],
+      "screenshot": "desktop-public-signup.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/overview",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-overview.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/calls",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-calls.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/upload",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-upload.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/analytics",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-analytics.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/classification",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-classification.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/direction",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-direction.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/compliance",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-compliance.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/agents",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-agents.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/agents/1011",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-agents_1011.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/training",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-training.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/customers",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-customers.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/sentiment",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-sentiment.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-company.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company?tab=rules",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-company_tab_rules.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/crm",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-crm.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/team",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-team.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/settings",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-settings.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/notifications",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-notifications.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/profile",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-admin-profile.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/overview",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-overview.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/calls",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-calls.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/agents/1011",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-agents_1011.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/training",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-training.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/company",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-company.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/profile",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-executive-profile.png"
+    },
+    {
+      "persona": "public",
+      "path": "/login",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-public-login.png"
+    },
+    {
+      "persona": "public",
+      "path": "/signup",
+      "view": "mobile",
+      "ok": true,
+      "problems": [],
+      "screenshot": "mobile-public-signup.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/overview",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-overview.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/calls",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-calls.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/upload",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-upload.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/analytics",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-analytics.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/classification",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-classification.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/direction",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-direction.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/compliance",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-compliance.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/agents",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-agents.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/agents/1011",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-agents_1011.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/training",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-training.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/customers",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-customers.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/sentiment",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-sentiment.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-company.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/company?tab=rules",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-company_tab_rules.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/crm",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-crm.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/team",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-team.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/settings",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-settings.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/notifications",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-notifications.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/profile",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-admin-profile.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/overview",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-overview.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/calls",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-calls.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/agents/1011",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-agents_1011.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/training",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-training.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/company",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-company.png"
+    },
+    {
+      "persona": "executive",
+      "path": "/profile",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-executive-profile.png"
+    },
+    {
+      "persona": "public",
+      "path": "/login",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-public-login.png"
+    },
+    {
+      "persona": "public",
+      "path": "/signup",
+      "view": "dark",
+      "ok": true,
+      "problems": [],
+      "screenshot": "dark-public-signup.png"
+    }
+  ]
+}

@@ -1,0 +1,197 @@
+{
+  "created": "1789390171388",
+  "updated": "1789390171388",
+  "name": "Call Analysis OS V2 - EMAIL",
+  "description": "",
+  "tags": [],
+  "pieces": [
+    "@puchoaistudio/tool-webhook",
+    "@puchoaistudio/tool-gmail"
+  ],
+  "template": {
+    "displayName": "Call Analysis OS V2 - EMAIL",
+    "trigger": {
+      "name": "trigger",
+      "valid": true,
+      "displayName": "Catch Webhook",
+      "type": "TOOL_TRIGGER",
+      "settings": {
+        "pieceName": "@puchoaistudio/tool-webhook",
+        "pieceVersion": "2.0.4",
+        "input": {
+          "authType": "none",
+          "authFields": {}
+        },
+        "sampleData": {},
+        "propertySettings": {
+          "authType": {
+            "type": "MANUAL"
+          },
+          "authFields": {
+            "type": "MANUAL",
+            "schema": {}
+          },
+          "liveMarkdown": {
+            "type": "MANUAL"
+          },
+          "syncMarkdown": {
+            "type": "MANUAL"
+          },
+          "testMarkdown": {
+            "type": "MANUAL"
+          }
+        },
+        "triggerName": "catch_webhook"
+      },
+      "nextAction": {
+        "name": "step_1",
+        "skip": false,
+        "type": "PIECE",
+        "valid": true,
+        "settings": {
+          "input": {
+            "cc": [],
+            "bcc": [],
+            "auth": "{{connections['LbTorRKvyMfMeYiWzGeIF']}}",
+            "body": "{{trigger['body']['email_content']['body_text']}}",
+            "draft": false,
+            "subject": "{{trigger['body']['subject']}}",
+            "receiver": [
+              "{{trigger['body']['recipient']['email']}}"
+            ],
+            "reply_to": [],
+            "body_type": "plain_text"
+          },
+          "pieceName": "@puchoaistudio/tool-gmail",
+          "actionName": "send_email",
+          "sampleData": {},
+          "pieceVersion": "2.0.5",
+          "propertySettings": {
+            "cc": {
+              "type": "MANUAL"
+            },
+            "bcc": {
+              "type": "MANUAL"
+            },
+            "auth": {
+              "type": "MANUAL"
+            },
+            "body": {
+              "type": "MANUAL"
+            },
+            "from": {
+              "type": "MANUAL"
+            },
+            "draft": {
+              "type": "MANUAL"
+            },
+            "subject": {
+              "type": "MANUAL"
+            },
+            "receiver": {
+              "type": "MANUAL"
+            },
+            "reply_to": {
+              "type": "MANUAL"
+            },
+            "body_type": {
+              "type": "MANUAL"
+            },
+            "attachment": {
+              "type": "MANUAL"
+            },
+            "in_reply_to": {
+              "type": "MANUAL"
+            },
+            "sender_name": {
+              "type": "MANUAL"
+            },
+            "attachment_name": {
+              "type": "MANUAL"
+            }
+          },
+          "errorHandlingOptions": {
+            "retryOnFailure": {
+              "value": false
+            },
+            "continueOnFailure": {
+              "value": false
+            }
+          }
+        },
+        "displayName": "Send Email",
+        "nextAction": {
+          "name": "step_2",
+          "skip": false,
+          "type": "PIECE",
+          "valid": true,
+          "displayName": "Return response",
+          "nextAction": null,
+          "settings": {
+            "input": {
+              "fields": {
+                "body": {
+                  "ok": true,
+                  "sent_to": "{{trigger['body']['recipient']['email']}}",
+                  "event": "{{trigger['body']['event']}}"
+                },
+                "status": 200,
+                "headers": {}
+              },
+              "respond": "stop",
+              "responseType": "json"
+            },
+            "pieceName": "@puchoaistudio/tool-webhook",
+            "actionName": "return_response",
+            "sampleData": {},
+            "pieceVersion": "^2.0.4",
+            "propertySettings": {
+              "fields": {
+                "type": "MANUAL",
+                "schema": {
+                  "body": {
+                    "type": "JSON",
+                    "required": true,
+                    "displayName": "JSON Body"
+                  },
+                  "status": {
+                    "type": "NUMBER",
+                    "required": false,
+                    "displayName": "Status",
+                    "defaultValue": 200
+                  },
+                  "headers": {
+                    "type": "OBJECT",
+                    "required": false,
+                    "displayName": "Headers"
+                  }
+                }
+              },
+              "respond": {
+                "type": "MANUAL"
+              },
+              "responseType": {
+                "type": "MANUAL"
+              }
+            },
+            "errorHandlingOptions": {
+              "retryOnFailure": {
+                "value": false
+              },
+              "continueOnFailure": {
+                "value": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "valid": true,
+    "agentIds": [],
+    "connectionIds": [
+      "LbTorRKvyMfMeYiWzGeIF"
+    ],
+    "schemaVersion": "7"
+  },
+  "blogUrl": ""
+}

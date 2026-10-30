@@ -1,0 +1,11 @@
+node_modules/
+.next/
+app/.env
+app/storage/
+*.log
+tsconfig.tsbuildinfo
+evidence/**/tmp/
+app/db/seed-logins.local.md
+app/.next/
+app/.next-build/
+evidence/ui/*.png

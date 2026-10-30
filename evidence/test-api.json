@@ -1,0 +1,213 @@
+{
+  "when": "2026-10-30T09:56:49.698Z",
+  "base": "http://127.0.0.1:3200",
+  "passed": 41,
+  "failed": 0,
+  "results": [
+    {
+      "name": "health answers { ok } to the public",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "health shows wiring to an org admin",
+      "ok": true,
+      "detail": "{\"call_processing\":\"not connected (WEBHOOK_CALL_PROCESSING)\",\"sop_extraction\":\"not connected (WEBHOOK_SOP_EXTRACTION)\",\"email\":\"not connected (WEBHOOK_EMAIL)\"}"
+    },
+    {
+      "name": "security headers on pages",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "signed-out visitor is sent to /login",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "org A admin opens overview",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "org A admin opens an org A call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "org B admin gets 404 for an org A call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "org A admin gets 404 for an org B call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "org B call list contains no org A agent",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "executive (agent 1011) gets 404 for another agent’s call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "executive opens their own call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "team leader of Support West gets 404 for an Outreach agent’s call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "team leader opens a call of their own team",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "/team for executive is denied",
+      "ok": true,
+      "detail": "HTTP 307"
+    },
+    {
+      "name": "/settings for executive is denied",
+      "ok": true,
+      "detail": "HTTP 307"
+    },
+    {
+      "name": "/upload for executive is denied",
+      "ok": true,
+      "detail": "HTTP 307"
+    },
+    {
+      "name": "/team for org admin is allowed",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "/settings for team leader is denied",
+      "ok": true,
+      "detail": "HTTP 307"
+    },
+    {
+      "name": "/platform for org admin is denied",
+      "ok": true,
+      "detail": "HTTP 307"
+    },
+    {
+      "name": "single recording upload stores and queues the call",
+      "ok": true,
+      "detail": "Call processing (STT + AI analysis) flow is not connected (WEBHOOK_CALL_PROCESSING is empty)."
+    },
+    {
+      "name": "filename parsed into agent, mobile, campaign, date, customer",
+      "ok": true,
+      "detail": "{\"agent\":\"1018\",\"campaign\":\"NONPLC\"}"
+    },
+    {
+      "name": "ZIP upload unpacks only the audio files",
+      "ok": true,
+      "detail": "2 calls"
+    },
+    {
+      "name": "executive cannot upload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "re-uploading a recording does not duplicate it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "recording streams with Range (206)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "org B cannot fetch an org A recording",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "a forged signed link is refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "inbound without token → 401",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "inbound with a wrong token → 401",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "a flow cannot write org A’s call under org B",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "flow write-back (Studio body.data shape) marks the call analysed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "agent name comes from the org’s own agent record",
+      "ok": true,
+      "detail": "Anurag Mehta"
+    },
+    {
+      "name": "a red / high-risk result notifies the agent’s managers",
+      "ok": true,
+      "detail": "6 notification(s)"
+    },
+    {
+      "name": "malformed JSON → 400",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "SOP extraction writes only valid rules and marks the document extracted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "SOP extraction cannot write another org’s document",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "CRM inbound without token → 401",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "CRM inbound upserts customers into the connection’s org only",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "RLS: app role sees nothing without an org, one org with it, and cannot write across",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the app connects as a role that is not superuser and cannot bypass RLS",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "every stored password is argon2id",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

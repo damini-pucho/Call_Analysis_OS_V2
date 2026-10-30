@@ -1,0 +1,72 @@
+{
+  "when": "2026-10-30T10:09:03.024Z",
+  "passed": 13,
+  "failed": 0,
+  "results": [
+    {
+      "name": "admin creates a user; temporary password shown once (email flow not connected)",
+      "ok": true,
+      "detail": "agent code 1052"
+    },
+    {
+      "name": "a new executive gets the next free 1xxx agent code",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "manager adds a coaching note to a call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "manager tags a call",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "training assigned to an agent",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the agent gets an in-app notification (email marked not connected)",
+      "ok": true,
+      "detail": "not_connected"
+    },
+    {
+      "name": "the agent marks their training completed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the assigner is notified of completion",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin adds a scoring rule",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "SOP upload is stored and honestly marked not extracted",
+      "ok": true,
+      "detail": "SOP & policy extraction flow is not connected (WEBHOOK_SOP_EXTRACTION is empty)."
+    },
+    {
+      "name": "CRM connection shows its secret once; stored encrypted / hashed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "removing a permission from a role takes effect immediately",
+      "ok": true,
+      "detail": "http://127.0.0.1:3200/denied"
+    },
+    {
+      "name": "a team leader cannot create an Admin (no privilege escalation)",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "when": "2026-10-30T10:07:06.517Z",
+  "passed": 7,
+  "failed": 0,
+  "results": [
+    {
+      "name": "sign-up lands on the new Company Profile",
+      "ok": true,
+      "detail": "http://127.0.0.1:3200/company?welcome=1"
+    },
+    {
+      "name": "welcome banner names the new organisation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "new workspace has no calls and none of the demo orgs’ agents",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "healthcare template rules were created",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the new owner can sign out and back in",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the org got its three default roles",
+      "ok": true,
+      "detail": "admin,executive,team_leader"
+    },
+    {
+      "name": "the owner’s password is stored as argon2id",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

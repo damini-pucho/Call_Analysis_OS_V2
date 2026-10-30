@@ -1,0 +1,1130 @@
+{
+  "created": "2026-10-30T09:43:03.556Z",
+  "updated": "2026-10-30T09:43:03.558Z",
+  "name": "Call Analysis OS V2 - CALL_PROCESSING",
+  "description": "V2: one recording per call. Sarvam STT → transcript repair → pre-filter (+ organisation rules) → analysis → write-back to the V2 app.",
+  "tags": [
+    "call-analysis-v2"
+  ],
+  "pieces": [
+    "@puchoaistudio/tool-webhook",
+    "@puchoaistudio/tool-speech-intelligence-pro",
+    "@puchoaistudio/tool-delay",
+    "@puchoaistudio/tool-llm-ai",
+    "@puchoaistudio/tool-http"
+  ],
+  "template": {
+    "displayName": "Call Analysis OS V2 - CALL_PROCESSING",
+    "trigger": {
+      "name": "trigger",
+      "valid": true,
+      "displayName": "Catch Webhook",
+      "type": "TOOL_TRIGGER",
+      "settings": {
+        "pieceName": "@puchoaistudio/tool-webhook",
+        "pieceVersion": "2.0.4",
+        "input": {
+          "authType": "none",
+          "authFields": {}
+        },
+        "sampleData": {},
+        "propertySettings": {
+          "authType": {
+            "type": "MANUAL"
+          },
+          "authFields": {
+            "type": "MANUAL",
+            "schema": {}
+          },
+          "liveMarkdown": {
+            "type": "MANUAL"
+          },
+          "syncMarkdown": {
+            "type": "MANUAL"
+          },
+          "testMarkdown": {
+            "type": "MANUAL"
+          }
+        },
+        "triggerName": "catch_webhook"
+      },
+      "nextAction": {
+        "name": "step_10",
+        "skip": false,
+        "type": "PIECE",
+        "valid": true,
+        "settings": {
+          "input": {
+            "model": "saaras:v3|Sarvam",
+            "audioUrl": "{{trigger['body']['recording']}}"
+          },
+          "pieceName": "@puchoaistudio/tool-speech-intelligence-pro",
+          "actionName": "submitSpeechToText",
+          "sampleData": {},
+          "pieceVersion": "3.0.1",
+          "propertySettings": {
+            "model": {
+              "type": "MANUAL"
+            },
+            "audioUrl": {
+              "type": "MANUAL"
+            }
+          },
+          "errorHandlingOptions": {
+            "retryOnFailure": {
+              "value": false
+            },
+            "continueOnFailure": {
+              "value": false
+            }
+          }
+        },
+        "nextAction": {
+          "name": "step_14",
+          "skip": false,
+          "type": "PIECE",
+          "valid": true,
+          "settings": {
+            "input": {
+              "unit": "minutes",
+              "delayFor": "6"
+            },
+            "pieceName": "@puchoaistudio/tool-delay",
+            "actionName": "delayFor",
+            "sampleData": {},
+            "pieceVersion": "2.0.0",
+            "propertySettings": {
+              "unit": {
+                "type": "MANUAL"
+              },
+              "delayFor": {
+                "type": "MANUAL"
+              },
+              "markdown": {
+                "type": "MANUAL"
+              }
+            },
+            "errorHandlingOptions": {
+              "retryOnFailure": {
+                "value": false
+              },
+              "continueOnFailure": {
+                "value": false
+              }
+            }
+          },
+          "nextAction": {
+            "name": "step_15",
+            "skip": false,
+            "type": "PIECE",
+            "valid": true,
+            "settings": {
+              "input": {
+                "jobId": "{{step_10['data']['response']['job_id']}}",
+                "maxWaitTime": "600",
+                "pollInterval": 10,
+                "waitForCompletion": false
+              },
+              "pieceName": "@puchoaistudio/tool-speech-intelligence-pro",
+              "actionName": "checkTranscriptionStatus",
+              "sampleData": {},
+              "pieceVersion": "3.0.1",
+              "propertySettings": {
+                "jobId": {
+                  "type": "MANUAL"
+                },
+                "maxWaitTime": {
+                  "type": "MANUAL"
+                },
+                "pollInterval": {
+                  "type": "MANUAL"
+                },
+                "waitForCompletion": {
+                  "type": "MANUAL"
+                }
+              },
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "nextAction": {
+              "name": "step_17",
+              "skip": false,
+              "type": "PIECE",
+              "valid": true,
+              "settings": {
+                "input": {
+                  "model": "{\"modelValue\":\"openai/gpt-3.5-turbo\",\"providerName\":\"OpenRouter\"}",
+                  "query": "You are an expert transcript repair specialist for an Indian financial-services call center (Prudent Corporate Advisory Services). You read the whole diarized conversation and produce the most ACCURATE transcript, fixing ASR, phonetic, brand, grammar, and punctuation errors. Follow the instructions below exactly. Return ONLY the corrected transcript — no preamble, no notes.\n🔴 CRITICAL RULE: MATCH SENTENCE-BY-SENTENCE LANGUAGE & SCRIPT (NEVER TRANSLATE/TRANSLITERATE)\n- Each speaker turn must stay in its original spoken language and script. Do not translate or change the script.\n- If a sentence is spoken in GUJARATI script (તમારો ફોલિયો...), output it in GUJARATI script.\n- If a sentence is spoken in HINDI or MARATHI script (गुड मॉर्निंग, काय हरकत...), output it in DEVANAGARI script.\n- If a sentence is spoken in ENGLISH (e.g. \"I want to check my account\"), output it in ENGLISH.\n- If a sentence is spoken in ROMANIZED/HINGLISH/GUJLISH using English letters (e.g. \"mujhe mandate change karana hai\"), output it in English/Roman letters.\n- YOUR ONLY JOB IS TO CORRECT INCORRECT SPELLINGS AND PHONETIC ERRORS SENTENCE-BY-SENTENCE. NEVER TRANSLATE OR TRANSLITERATE.\n### INSTRUCTIONS:\nRepair this diarized call transcript from Sarvam STT. STT writes what it HEARS, not what was SAID. First, read the whole conversation for context (who is the agent vs customer, what product/issue), then repair each line to reflect what was ACTUALLY said in its spoken language. Infer the right word from context + phonetics + domain knowledge.\nFIX ANY ASR/PHONETIC ERROR TYPE (Keep in original script):\n  • phonetic / sound-alike words (e.g. \"ridemption\" -> \"redemption\" in English, or matching Indic spelling fixes)\n  • wrong-word / homophone substitutions that fit the context\n  • brand / product / name spellings (e.g. \"fund bazar\" -> \"Fundzbazar\", \"प्रूडेंट\" -> \"प्रूडेंट\")\n  • broken word boundaries (e.g. \"sipband\" -> \"SIP band\", \"ई मैंडेट\" -> \"ई-मैंडेट\")\n  • stray noise, repeated or dropped tiny words — when context makes the intent clear\n  • punctuation and casing\n  • grammar ONLY where the ASR mangled it, with the SMALLEST edit (e.g., \"Mera card nai chalta\" -> \"Mera card nahi chalta\").\nNEVER:\n  1. Translate or paraphrase Indic sentences into English or vice-versa.\n  2. Transliterate Devanagari or Gujarati scripts into English/Latin alphabets.\n  3. Invent words, sentences, or greetings that were not spoken.\n  4. Drop, merge, split, reorder, or summarise speaker turns. Keep every turn line-by-line, from first to last.\n  5. Re-assign speakers — preserve each \"Speaker 1:\" / \"Speaker 2:\" label exactly.\nENTITY & DOMAIN HINTS (Adjust spelling to match input script):\n- Brand / organisation names: Prudent, Prudent Corporate Advisory Services, Prudent Loyalty Club, Fundzbazar, Liquiloan, BSE Star MF, CAMS, MyCAMS, KFintech, Karvy\n- Domain terms / acronyms: SIP, SWP, STP, eMandate, NACH, KYC, PAN, Aadhaar, FATCA, XIRR, ELSS, NFO, IDCW, ARN, EUIN, RTA, TPIN, Demat, Folio, Redemption, Lumpsum, Mandate, Nominee, Portfolio\nOUTPUT: the complete corrected transcript only — every Speaker label on its own turn, no preamble or notes.\nTRANSCRIPT:\n{{step_15['data']['response']['text']}}",
+                  "temperature": 0.7,
+                  "puchoModelKey": "openai/gpt-3.5-turbo",
+                  "puchoProviderName": "OpenRouter"
+                },
+                "pieceName": "@puchoaistudio/tool-llm-ai",
+                "actionName": "askLlm",
+                "sampleData": {},
+                "pieceVersion": "2.3.3",
+                "propertySettings": {
+                  "model": {
+                    "type": "MANUAL"
+                  },
+                  "query": {
+                    "type": "MANUAL"
+                  },
+                  "maxTokens": {
+                    "type": "MANUAL"
+                  },
+                  "temperature": {
+                    "type": "MANUAL"
+                  },
+                  "maxTokensNote": {
+                    "type": "MANUAL"
+                  },
+                  "puchoModelKey": {
+                    "type": "MANUAL"
+                  },
+                  "puchoProviderName": {
+                    "type": "MANUAL"
+                  }
+                },
+                "errorHandlingOptions": {
+                  "retryOnFailure": {
+                    "value": false
+                  },
+                  "continueOnFailure": {
+                    "value": false
+                  }
+                }
+              },
+              "nextAction": {
+                "name": "step_18",
+                "skip": false,
+                "type": "CODE",
+                "valid": true,
+                "settings": {
+                  "input": {
+                    "STT": "{{step_10['data']}}",
+                    "trigger": "{{trigger['body']}}",
+                    "supabase": "{{trigger['body']['agents']}}",
+                    "transcript": "{{step_17['data']['response']}}"
+                  },
+                  "sampleData": {},
+                  "sourceCode": {
+                    "code": "// @ts-nocheck\n/**\n * PuchoAI Unified Code Tool — Centralized Metadata Parser, Duration Calculator & Taxonomy Reference\n * \n * 1. Parses filename segment structure to extract metadata.\n * 2. Parses STT output payload to extract duration_seconds and divides into minutes & seconds.\n * 3. Checks validity / non-contact condition to determine if call should be processed (\"Yes\" or \"No\").\n * 4. Returns parsed metadata, duration metrics, transcript, validation flags, and hardcoded Taxonomy object.\n */\n\nconst TAXONOMY = {\n  version: \"2.0\",\n  generated: new Date().toISOString(),\n\n  final_classifications: [\n    \"intent\",\n    \"query\",\n    \"complaint\",\n    \"non-contact\",\n    \"invalid\"\n  ],\n  classification_labels: \"intent|query|complaint|non-contact|invalid\",\n\n  stt_rules: {\n    description: \"Sarvam STT is noisy — before penalising any SOP or KPI:\",\n    rules: [\n      \"Garbled or misspelled words are acoustic artifacts, not agent errors (\\\"gud mornig\\\" = \\\"Good morning\\\").\",\n      \"Garbled company name in opening = STT artifact, never flag.\",\n      \"Conversation reaching account/portfolio/SIP details = identity established through context.\",\n      \"Background or third-party audio = ignore entirely. Never infer risk or ZTP from noise.\",\n      \"STT noise tolerance covers transcription QUALITY — a phonetically distorted greeting (\\\"gud morneng\\\", \\\"good moring\\\", \\\"gud evning\\\") still passes SOP 1. It does NOT transform a structurally absent greeting into a passing one: a call-pickup acknowledgement (\\\"hello\\\", \\\"haan bolo\\\") has no greeting structure to distort, so STT tolerance is irrelevant to it.\"\n    ]\n  },\n\n  campaigns: {\n    PLC: {\n      name: \"PLC\",\n      full_name: \"Prudent Loyalty Club\",\n      greeting_standard: '\"Good morning/afternoon, this is [Name] from Prudent Loyalty Club. How may I assist you?\"',\n      core_topics: [\n        \"SIP\", \"KYC\", \"Redemption\", \"Mandate\", \"eMandate\",\n        \"ARN\", \"Portfolio\", \"Login/OTP\", \"Liquiloan\", \"Account Management\"\n      ]\n    },\n    NONPLC: {\n      name: \"NONPLC\",\n      full_name: \"Prudent / Fundzbazar\",\n      greeting_standard: '\"Good morning/afternoon, this is [Name] from Prudent / Fundzbazar. How may I assist you?\"',\n      core_topics: [\n        \"SIP\", \"KYC\", \"Redemption\", \"Mandate\", \"eMandate\",\n        \"ARN\", \"Portfolio\", \"Login/OTP\", \"Liquiloan\", \"Account Management\"\n      ]\n    },\n    BROKING: {\n      name: \"BROKING\",\n      full_name: \"Prudent Stock Broking\",\n      greeting_standard: '\"Good morning/afternoon, this is [Name] from Prudent Stock Broking. How may I assist you?\"',\n      core_topics: [\n        \"Stock Broking\", \"Account Management\"\n      ]\n    },\n    VIRTUAL: {\n      name: \"VIRTUAL\",\n      full_name: \"Prudent\",\n      greeting_standard: '\"Good morning/afternoon, this is [Name] from Prudent. How may I assist you?\"',\n      core_topics: [\n        \"SIP\", \"KYC\", \"Redemption\", \"Account Management\", \"General Inquiry\"\n      ]\n    }\n  },\n\n  call_topics: {\n    inbound: [\n      \"KYC\", \"SIP\", \"Redemption\", \"Mandate\", \"eMandate\",\n      \"Login/OTP\", \"ARN\", \"Portfolio\", \"Liquiloan\",\n      \"Stock Broking\", \"Account Management\", \"General Inquiry\",\n      \"Complaint\", \"Other Products\", \"Other\"\n    ],\n    outbound: [\n      \"SIP Review\", \"Mandate Follow-up\", \"Missed Payment\",\n      \"ARN Renewal\", \"KYC Completion\", \"Lapsed SIP\",\n      \"Campaign Outreach\", \"Virtual RM Advisory\",\n      \"Lead Follow-up\", \"Upsell/Cross-sell\"\n    ],\n    rules: {\n      complaint_topic_note: \"Use call_topic=Complaint only when no specific subject domain is identifiable\",\n      other_products_note: \"Financial domain but outside campaign core scope — preferred fallback\",\n      other_note: \"Topic cannot be identified at all — use only as last resort\"\n    }\n  },\n\n  call_topic_boundary_rules: {\n    description: \"Before assigning call_topic, ask yourself in this order:\",\n    steps: [\n      \"1. Is the call clearly and primarily about one of the core topics listed above for the campaign? → use that topic.\",\n      \"2. Is it clearly about a different campaign's well-defined topic (e.g. \\\"Stock Broking\\\" for equity trading, \\\"Liquiloan\\\" for a loan product) that happened to come in on this line? → use that specific topic.\",\n      \"3. Is the call about something outside both lists — any financial product, service, or query not clearly covered by the standard campaign taxonomy? → call_topic=Other Products, call_sub_topic=the specific product or service the customer is discussing.\"\n    ],\n    principle: \"\\\"Other Products\\\" is the principled default for any call that concerns a product, service, or topic outside the campaign's core scope. This includes any product you have not seen in the taxonomy before. Do NOT force-map an unrecognised topic to the closest-sounding existing topic — that is the incorrect fallback this rule is designed to prevent.\"\n  },\n\n  kpi11_intents: {\n    inbound: [\n      \"Complaint\",\n      \"Query\",\n      \"SIP Start\",\n      \"SIP Stop\",\n      \"SIP Modify\",\n      \"Redemption\",\n      \"Purchase\",\n      \"KYC Initiation\",\n      \"KYC Update\",\n      \"eMandate Setup\",\n      \"eMandate Issue\",\n      \"Login/OTP Issue\",\n      \"ARN Transfer\",\n      \"Portfolio Review\",\n      \"Liquiloan Query\",\n      \"Stock Broking Query\",\n      \"Account Management\",\n      \"General Information\",\n      \"Callback Request\"\n    ],\n    outbound: [\n      \"SIP Review\",\n      \"Mandate Follow-up\",\n      \"Missed Payment\",\n      \"ARN Renewal\",\n      \"KYC Completion\",\n      \"Lapsed SIP\",\n      \"Campaign Outreach\",\n      \"Virtual RM Advisory\",\n      \"Lead Follow-up\",\n      \"Upsell/Cross-sell\"\n    ],\n    rules: {\n      instruction: \"Use EXACTLY one label from the taxonomy above. Copy character-for-character. Do not paraphrase, abbreviate, or invent labels.\",\n      kpi11_intent_detail: \"one-sentence explanation of what the customer actually needed or did.\",\n      kpi11_sub_category: \"a 2-4 word label one level narrower than kpi11_intent (e.g., 'SIP pause request', 'mandate bank failure', 'KYC document query'). Not a full sentence.\"\n    },\n    classification_mapping: {\n      \"General Information\": \"intent\",\n      \"Callback Request\": \"intent\",\n      \"SIP Start\": \"intent\",\n      \"SIP Stop\": \"intent\",\n      \"SIP Modify\": \"intent\",\n      \"Redemption\": \"intent\",\n      \"Purchase\": \"intent\",\n      \"KYC Initiation\": \"intent\",\n      \"KYC Update\": \"intent\",\n      \"eMandate Setup\": \"intent\",\n      \"eMandate Issue\": \"intent\",\n      \"ARN Transfer\": \"intent\",\n      \"Portfolio Review\": \"intent\",\n      \"Liquiloan Query\": \"intent\",\n      \"Stock Broking Query\": \"intent\",\n      \"Account Management\": \"intent\",\n      \"Query\": \"query\",\n      \"Login/OTP Issue\": \"query\",\n      \"Complaint\": \"complaint\",\n      \"SIP Review\": \"intent\",\n      \"Mandate Follow-up\": \"intent\",\n      \"Missed Payment\": \"intent\",\n      \"ARN Renewal\": \"intent\",\n      \"KYC Completion\": \"intent\",\n      \"Lapsed SIP\": \"intent\",\n      \"Campaign Outreach\": \"intent\",\n      \"Virtual RM Advisory\": \"intent\",\n      \"Lead Follow-up\": \"intent\",\n      \"Upsell/Cross-sell\": \"intent\"\n    }\n  },\n\n  kyc_question_types: [\n    { value: \"why_kyc\",        label: \"Customer asking why KYC is required or mandatory\" },\n    { value: \"about_process\",   label: \"Questions about how to complete KYC, documents needed, or steps involved\" },\n    { value: \"document_submission\", label: \"Call where documents are being submitted, uploaded, or confirmed\" },\n    { value: \"verification\",    label: \"KYC status check, verification pending/rejected, or re-KYC issues\" },\n    { value: \"null\",            label: \"Not applicable — call is not KYC-related\" }\n  ],\n\n  classification_signals: {\n    intent: {\n      transactional: [\n        \"start sip\", \"stop sip\", \"pause sip\", \"modify sip\",\n        \"sip start\", \"sip stop\", \"kyc\", \"redemption\", \"purchase\",\n        \"mandate\", \"emandate\", \"arn transfer\", \"portfolio review\",\n        \"account management\", \"callback\"\n      ],\n      information_seeking: [\n        \"general information\", \"product information\",\n        \"jaankari chahiye\", \"batao\", \"samjhao\"\n      ]\n    },\n    query: {\n      enquiry: [\n        \"query\", \"question\", \"enquiry\", \"inquiry\",\n        \"poochna\", \"jaankari\", \"sawal\"\n      ],\n      problem_signals: [\n        \"not working\", \"not received\", \"pending\", \"failed\",\n        \"error\", \"issue\", \"status\", \"tat\", \"delayed\",\n        \"nahi aaya\", \"kab aayega\", \"kyu nahi\"\n      ]\n    },\n    complaint: {\n      english: [\n        \"complaint\", \"grievance\", \"dissatisf\", \"escalat\",\n        \"churn\", \"frustrated\", \"angry\", \"wrong charges\",\n        \"wrong nav\", \"deducted wrongly\", \"financial loss\",\n        \"fraud\", \"sebi\", \"poor service\", \"unacceptable\"\n      ],\n      hindi_urdu: [\n        \"shikayat\", \"narazgi\", \"farayad\", \"phariyaad\",\n        \"gussa\", \"galat kaat liya\", \"wapas nahi aaya\"\n      ]\n    }\n  },\n\n  validity_tiers: [\n    {\n      tier: 0,\n      name: \"NON-CONTACT\",\n      description: \"Only telecom automation (switched off / not reachable / voicemail). Zero human speech.\",\n      rules: {\n        evaluation: \"all sop=NA, kpi1=No, kpi2=No, kpi3=Efficient, kpi4=No, kpi5=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=non-contact, tier=0\"\n      }\n    },\n    {\n      tier: 1,\n      name: \"DISCONNECT\",\n      description: \"Agent connected but line dropped before any customer query, concern, or actionable topic was raised. No meaningful exchange occurred.\",\n      rules: {\n        evaluation: \"all sop=NA, kpi1=No, kpi3=Efficient, kpi4=No, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=1\",\n        note: \"Agent not at fault. Line drop = telecom event. No SOP degrade, no risk flag, no ZTP, coaching stays Green.\"\n      }\n    },\n    {\n      tier: 2,\n      name: \"HOLD-DROP\",\n      description: \"Caller disconnected while queued or on hold before the interaction could complete.\",\n      rules: {\n        gate_check: \"Did a meaningful customer interaction (query raised, issue discussed, topic exchanged) actually occur before the hold event? If NO, all sop=NA. If YES, evaluate sop_greeting + sop_caller_identified from pre-hold content only; all other sop=NA.\",\n        evaluation: \"kpi4=No (hold disconnect ≠ abandonment), kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=2\",\n        note: \"Customer leaving hold is their choice, not agent abandonment. No risk or ZTP flags regardless of hold duration.\"\n      }\n    },\n    {\n      tier: 3,\n      name: \"NOISE\",\n      description: \"Third-party or background audio dominates. No clear agent-customer exchange.\",\n      rules: {\n        evaluation: \"all sop=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=3\",\n        note: \"Third-party audio cannot be attributed to the agent. Never set risk or ZTP from background voices — even if the noise resembles a ZTP event.\"\n      }\n    },\n    {\n      tier: 4,\n      name: \"NON-EVALUABLE\",\n      description: \"Blank transcript, content consists only of greetings/filler with no customer query or topic raised, or language is unrecognised.\",\n      rules: {\n        evaluation: \"all sop=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=4\"\n      }\n    },\n    {\n      tier: 5,\n      name: \"VALID\",\n      description: \"Meaningful agent-customer exchange present. Proceed with full evaluation.\",\n      rules: {\n        evaluation: \"Evaluate all SOPs and KPIs normally.\"\n      }\n    }\n  ],\n\n  non_contact_signal_phrases: [\n    \"switched off\", \"not reachable\", \"not available\",\n    \"please try again\", \"out of coverage\", \"out of service\",\n    \"the number you have dialed\", \"subscriber you are calling\",\n    \"leave a message after the tone\", \"voicemail\",\n    \"this number is not in service\", \"currently busy\",\n    \"व्यस्त है\", \"आपका कॉल\", \"जो नंबर आपने डायल\", \"जो नम्बर आपने\",\n    \"इस समय उपलब्ध नहीं\", \"स्विच्ड ऑफ\", \"नेटवर्क से बाहर\",\n    \"હાલ ઉપલબ્ધ નથી\", \"સ્વીચ ઑફ\"\n  ],\n\n  greeting_standards: {\n    PLC:     '\"Good morning/afternoon, this is [Name] from Prudent Loyalty Club. How may I assist you?\"',\n    NONPLC:  '\"Good morning/afternoon, this is [Name] from Prudent / Fundzbazar. How may I assist you?\"',\n    BROKING: '\"Good morning/afternoon, this is [Name] from Prudent Stock Broking. How may I assist you?\"',\n    VIRTUAL: '\"Good morning/afternoon, this is [Name] from Prudent. How may I assist you?\"'\n  },\n\n  sop_rules: {\n    sop_1_greeting: {\n      label: \"SOP 1 — Greeting\",\n      valid_values: [\"Yes\", \"No\", \"NA\"],\n      description: \"Agent's opening contains recognisable structural greeting intent.\"\n    },\n    sop_2_caller_identified: {\n      label: \"SOP 2 — Caller Identified\",\n      valid_values: [\"Yes\", \"No\", \"NA\"],\n      special: \"DealerDesk/Partner lines = system-verified at connect, mark YES automatically.\"\n    },\n    sop_3_hold_permission: {\n      label: \"SOP 3 — Hold Permission\",\n      valid_values: [\"Yes\", \"No\", \"NA\"]\n    },\n    sop_4_hold_refresh: {\n      label: \"SOP 4 — Hold Refresh\",\n      valid_values: [\"Yes\", \"No\", \"NA\"]\n    },\n    sop_5_closing: {\n      label: \"SOP 5 — Closing\",\n      valid_values: [\"Yes\", \"No\", \"NA\"]\n    },\n    sop_6_feedback_ivr: {\n      label: \"SOP 6 — Feedback IVR\",\n      valid_values: [\"Yes\", \"No\", \"NA\"]\n    },\n    sop_7_behaviour: {\n      label: \"SOP 7 — Behaviour\",\n      valid_values: [\"Yes\", \"No\", \"NA\"]\n    }\n  },\n\n  kpi_rules: {\n    kpi1_resolution: { label: \"KPI 1 — Call Resolution\", valid_values: [\"Yes\", \"No\", \"Partial\", \"NA\"] },\n    kpi2_fcr: { label: \"KPI 2 — First Call Resolution\", valid_values: [\"Yes\", \"No\", \"Unknown\", \"NA\"] },\n    kpi3_aht: { label: \"KPI 3 — AHT Efficiency\", valid_values: [\"Efficient\", \"Acceptable\", \"Inefficient\"] },\n    kpi4_abandonment: { label: \"KPI 4 — Call Abandonment\", valid_values: [\"Yes\", \"No\", \"NA\"] },\n    kpi5_csat: { label: \"KPI 5 — CSAT Indicator\", valid_values: [\"High\", \"Medium\", \"Low\", \"NA\"] },\n    kpi6_quality: { label: \"KPI 6 — Call Quality Score\", valid_values: [1, 2, 3, 4, 5] },\n    kpi7_hold_compliance: { label: \"KPI 7 — Hold Compliance\", valid_values: [\"Compliant\", \"Non-Compliant\", \"NA\"] },\n    kpi8_ivr_transfer: { label: \"KPI 8 — IVR Transfer\", valid_values: [\"Yes\", \"No\", \"Customer Refused\", \"NA\"] },\n    kpi9_process_adherence: { label: \"KPI 9 — Process Adherence\", valid_values: [\"Full\", \"Partial\", \"None\", \"NA\"] },\n    kpi10_escalation: { label: \"KPI 10 — Escalation\", valid_values: [\"Yes\", \"No\", \"NA\"] },\n    kpi11_intent: { label: \"KPI 11 — Intent\" },\n    kpi12_service_level: { label: \"KPI 12 — Service Level\", default: \"Requires Telephony Data\" },\n    kpi13_repeat_call: { label: \"KPI 13 — Repeat Call\", default: \"Requires CRM Data\" },\n    kpi14_query_raised: { label: \"KPI 14 — Query Raised\", valid_values: [\"Yes\", \"No\", \"NA\"] },\n    kpi15_sentiment: { label: \"KPI 15 — Sentiment\" }\n  }\n};\n\n// Mappings of actual agent codes from database\nconst AGENT_NAMES_MAP = {\n  \"1002\": \"Mitul Parmar\",\n  \"1003\": \"Nandni Mehta\",\n  \"1004\": \"Devika Lathia\",\n  \"1009\": \"Pooja Bhatt\",\n  \"1010\": \"Vishal Leuva\",\n  \"1011\": \"Dipti Sarvekar\",\n  \"1014\": \"Devika Lathia\",\n  \"1016\": \"Kirti Jangid\",\n  \"1017\": \"Vishwa Parmar\",\n  \"1018\": \"Anurag Tripathi\",\n  \"1022\": \"Gargi Agrawal\",\n  \"1028\": \"Darshana Solanki\",\n  \"1049\": \"Dipakkumar Parmar\",\n  \"1050\": \"Darshan Soni\",\n  \"1084\": \"Mayuriben Jayswal\",\n  \"1096\": \"Moksh Shah\",\n  \"AG001\": \"Priya Sharma\",\n  \"AG002\": \"Rahul Patel\"\n};\n\nexport const code = async (inputs) => {\n\n  const getTranscriptText = (data) => {\n    if (!data) return \"\";\n    let parsed = data;\n    if (typeof data === 'string') {\n      try { parsed = JSON.parse(data); } catch(e) {}\n    }\n    if (parsed && typeof parsed === 'object') {\n      if (parsed.response) {\n        let resp = parsed.response;\n        if (typeof resp === 'string') {\n          try { resp = JSON.parse(resp); } catch(e) {}\n        }\n        if (resp && typeof resp === 'object' && resp.text) return resp.text;\n        if (typeof resp === 'string') return resp;\n      }\n      if (parsed.text) return parsed.text;\n    }\n    return typeof data === 'string' ? data : JSON.stringify(data);\n  };\n\n  const transcript = getTranscriptText(inputs.transcript).trim();\n\n  // Extract trigger object safely for bracket notation access in Pucho AI TS environment\n  let trigger = inputs.trigger || {};\n  if (typeof trigger === 'string') {\n    try { trigger = JSON.parse(trigger); } catch(e) { trigger = {}; }\n  }\n  const body = trigger['body'] || trigger || {};\n\n  // Extract initial fields from inputs or trigger\n  const filename = inputs.filename || body['filename'] || trigger['filename'] || \"\";\n  \n  // temporary parse variables\n  let parsedCallDate = \"\";\n  let parsedMobileNumber = \"\";\n  let parsedAgentCode = \"\";\n  let parsedCampaign = \"\";\n\n  // 1. Filename parsing segment logic (if filename is present)\n  if (filename) {\n    const match = filename.match(/^(\\d{8})-(\\d+)_(\\d+)_([^_]+)_([^-._]+)/);\n    if (match) {\n      const rawDate = match[1];\n      parsedCallDate = `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`;\n      parsedMobileNumber = match[3];\n      parsedAgentCode = match[4]; // Segment 4 is agent code\n      parsedCampaign = match[5].toUpperCase();\n    }\n  }\n\n  // 2. Prioritize filename values, but if empty, fall back to webhook trigger inputs\n  let agentCode = parsedAgentCode || inputs.agent_code || body['agent_code'] || trigger['agent_code'] || \"\";\n  let mobileNumber = parsedMobileNumber || inputs.mobile_number || body['mobile_number'] || trigger['mobile_number'] || \"\";\n  let callDate = parsedCallDate || inputs.call_date || body['call_date'] || trigger['call_date'] || \"\";\n  let campaign = (parsedCampaign || inputs.campaign || body['campaign'] || trigger['campaign'] || \"NONPLC\").toUpperCase();\n\n  // Resolve agent name using dynamic Supabase DB API / inputs.supabase (and fallback mapping / code default)\n  let agentName = inputs.agent_name || body['agent_name'] || trigger['agent_name'] || \"\";\n  \n  if (!agentName && agentCode) {\n    // 1. Try to fetch from the passed supabase input (output of Search Rows step)\n    let dbAgents = inputs.supabase;\n    if (typeof dbAgents === 'string') {\n      try { dbAgents = JSON.parse(dbAgents); } catch (e) {}\n    }\n    if (Array.isArray(dbAgents) && dbAgents.length > 0) {\n      const foundAgent = dbAgents.find(a => String(a.agent_code) === String(agentCode));\n      if (foundAgent && foundAgent.agent_name) {\n        agentName = foundAgent.agent_name;\n      } else if (dbAgents[0] && dbAgents[0].agent_name) {\n        // Fallback: If Search Rows was already filtered by agentCode, first index is correct\n        agentName = dbAgents[0].agent_name;\n      }\n    }\n\n    // 2. Fallback to direct fetch query if not resolved from inputs.supabase\n    if (!agentName) {\n      const supabaseUrl = '';\n      const supabaseAnonKey = '';\n\n      try {\n        const dbResponse = await fetch(`${supabaseUrl}/rest/v1/agents?agent_code=eq.${agentCode}&select=agent_name`, {\n          headers: {\n            'apikey': supabaseAnonKey,\n            'Authorization': `Bearer ${supabaseAnonKey}`\n          }\n        });\n        if (dbResponse.ok) {\n          const dbData = await dbResponse.json();\n          if (dbData && dbData.length > 0) {\n            agentName = dbData[0].agent_name;\n          }\n        }\n      } catch(e) {\n        // Revert to local mapping fallback\n      }\n    }\n\n    // 3. Fallback to hardcoded map or default name\n    if (!agentName) {\n      agentName = AGENT_NAMES_MAP[agentCode] || `Agent ${agentCode}`;\n    }\n  }\n\n  if (!callDate) {\n    callDate = new Date().toISOString().split('T')[0];\n  }\n\n  // ─── DURATION PARSING & MINUTES/SECONDS DIVISION ───\n  let rawDuration = 0;\n  const extractDuration = (src) => {\n    if (!src) return 0;\n    let parsed = src;\n    if (typeof src === 'string') {\n      try { parsed = JSON.parse(src); } catch(e) {}\n    }\n    if (parsed && typeof parsed === 'object') {\n      if (parsed.data && parsed.data.response && parsed.data.response.duration_seconds !== undefined) {\n        return Number(parsed.data.response.duration_seconds) || 0;\n      }\n      if (parsed.response && parsed.response.duration_seconds !== undefined) {\n        return Number(parsed.response.duration_seconds) || 0;\n      }\n      if (parsed.duration_seconds !== undefined) {\n        return Number(parsed.duration_seconds) || 0;\n      }\n      if (parsed.duration !== undefined) {\n        return Number(parsed.duration) || 0;\n      }\n    }\n    return 0;\n  };\n\n  rawDuration = extractDuration(inputs.STT) || \n                extractDuration(inputs.stt) || \n                extractDuration(inputs.trigger) || \n                Number(inputs.duration_seconds || inputs.duration_sec || body['duration_seconds'] || body['duration'] || 0);\n\n  const durationSeconds = Math.round(rawDuration);\n  const minutes = Math.floor(durationSeconds / 60);\n  const seconds = durationSeconds % 60;\n  const durationFormatted = `${minutes} min ${seconds} sec`;\n  const durationFormattedMMSS = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;\n\n  // ─── VALIDATION CONDITION CHECK (Process Forward: Yes / No) ───\n  const NON_CONTACT_SIGNALS = [\n    \"switched off\", \"not reachable\", \"not available\",\n    \"please try again\", \"out of coverage\", \"out of service\",\n    \"the number you have dialed\", \"subscriber you are calling\",\n    \"leave a message after the tone\", \"voicemail\",\n    \"this number is not in service\", \"currently busy\",\n    \"व्यस्त है\", \"आपका कॉल\", \"जो नंबर आपने डायल\", \"जो नम्बर आपने\",\n    \"इस समय उपलब्ध नहीं\", \"स्विच्ड ऑफ\", \"नेटवर्क से बाहर\",\n    \"હાલ ઉપલબ્ધ નથી\", \"સ્વીચ ઑફ\"\n  ];\n\n  const wordCount = transcript ? transcript.split(/\\s+/).filter(w => w.length > 0).length : 0;\n  const transcriptLower = transcript.toLowerCase();\n\n  let shouldProcess = \"Yes\";\n  let reason = \"Valid transcript detected — proceed with full LLM analysis.\";\n\n  if (!transcript || wordCount < 5) {\n    shouldProcess = \"No\";\n    reason = \"Empty or too-short transcript — skip LLM processing.\";\n  } else {\n    const isNonContact = NON_CONTACT_SIGNALS.some(phrase => transcriptLower.includes(phrase));\n    if (wordCount < 60 && isNonContact) {\n      shouldProcess = \"No\";\n      reason = \"Non-contact attempt detected (telecom automation / voicemail / IVR message) — skip LLM analysis.\";\n    }\n  }\n\n\n  // ─── V2: the organisation's own rules (Company Profile → company_context). Empty = the built-in taxonomy above. ───\n  const CTX = (body && typeof body['company_context'] === 'object') ? body['company_context'] : null;\n  let company_rules_text = '';\n  let company_name = '';\n  if (CTX) {\n    company_name = CTX.company_name || '';\n    if (Array.isArray(CTX.campaigns) && CTX.campaigns.length) {\n      TAXONOMY.campaigns = Object.fromEntries(CTX.campaigns.map(c => [String(c.name).toUpperCase(), { name: c.name, full_name: c.full_name || c.name, greeting_standard: c.greeting_standard || '', core_topics: c.core_topics || [], direction: c.direction }]));\n    }\n    const list = (title, rows, f) => (Array.isArray(rows) && rows.length) ? '\\n' + title + '\\n' + rows.map(f).join('\\n') : '';\n    company_rules_text = [\n      'Organisation: ' + company_name + (CTX.industry ? ' (' + CTX.industry + ')' : '') + (CTX.company_description ? ' — ' + CTX.company_description : ''),\n      'AHT target: ' + (CTX.aht_target_min || 5) + ' minutes.',\n      list('SOPs (score SOP 1..N in this order; NA rules as stated):', CTX.sops, (s, i) => 'SOP ' + (i + 1) + ' ' + s.title + ' | ' + (s.rule || '') + (s.na_rule ? ' | NA: ' + s.na_rule : '')),\n      list('KPIs:', CTX.kpis, k => k.code + ' ' + k.title + ': ' + (k.rule || '') + (k.scale ? ' [' + k.scale + ']' : '')),\n      list('Compliance rules:', CTX.compliance_rules, r => '- ' + r.title + ' (' + r.severity + '): ' + (r.rule || '')),\n      list('Company policies:', CTX.policies, r => '- ' + r.title + ' (' + r.severity + '): ' + (r.rule || '')),\n      list('Zero-tolerance (ZTP) scenarios:', CTX.ztp_scenarios, z => '- ' + z),\n      (CTX.intents && (CTX.intents.inbound || []).length) ? '\\nKPI 11 intent taxonomy — Inbound: ' + CTX.intents.inbound.join('|') + '\\nOutbound: ' + (CTX.intents.outbound || []).join('|') : '',\n    ].filter(Boolean).join('\\n');\n  }\n  return {\n    company_rules_text: company_rules_text,\n    company_name: company_name,\n    process: shouldProcess,           // \"Yes\" or \"No\" (for Pucho AI Router step)\n    should_process: shouldProcess,    // \"Yes\" or \"No\"\n    process_call: shouldProcess,      // \"Yes\" or \"No\"\n    is_valid: shouldProcess === \"Yes\",// boolean flag\n    reason: reason,                   // Reason description\n    filename: filename,\n    transcript: transcript,\n    agent_code: agentCode,\n    agent_name: agentName,\n    mobile_number: mobileNumber,\n    call_date: callDate,\n    campaign: campaign,\n\n    // ─── Duration Metrics Returned ───\n    duration_seconds: durationSeconds,          // e.g. 215\n    duration_minutes: minutes,                  // e.g. 3\n    duration_remaining_seconds: seconds,        // e.g. 35\n    duration_formatted: durationFormatted,     // e.g. \"3 min 35 sec\"\n    duration_mmss: durationFormattedMMSS,       // e.g. \"03:35\"\n\n    taxonomy: TAXONOMY\n  };\n};",
+                    "packageJson": "{}"
+                  },
+                  "errorHandlingOptions": {
+                    "retryOnFailure": {
+                      "value": false
+                    },
+                    "continueOnFailure": {
+                      "value": false
+                    }
+                  }
+                },
+                "nextAction": {
+                  "name": "step_19",
+                  "skip": false,
+                  "type": "ROUTER",
+                  "valid": true,
+                  "children": [
+                    {
+                      "name": "step_20",
+                      "skip": false,
+                      "type": "ROUTER",
+                      "valid": true,
+                      "children": [
+                        {
+                          "name": "step_21",
+                          "skip": false,
+                          "type": "PIECE",
+                          "valid": true,
+                          "settings": {
+                            "input": {
+                              "model": "{\"modelValue\":\"pucho_normal_chat_pro\",\"providerName\":\"Pucho\"}",
+                              "query": "You are a senior QA analyst at Prudent Corporate Advisory Services, an Indian mutual fund and financial services company (Fundzbazar platform). Your role is to evaluate call center recordings and return structured quality assessments.\nEVALUATION PHILOSOPHY — internalize ALL of these before reading any transcript:\n- Be practical and context-aware. Judge intent and outcome, not textbook perfection.\n- Natural, conversational Indian agent behavior (code-switching, informal tone, filler words) is completely normal — never penalize it.\n- For AGENT-CONTROLLABLE fields (SOPs, agent behaviour/professionalism, process adherence, resolution effort): default to YES/Partial when there is reasonable evidence of effort. Reserve NO/None for clear, unambiguous absence.\n- For CUSTOMER-STATE & OUTCOME fields (kpi5_csat_indicator, empathy_score, churn_risk, kpi15 sentiment, systemic_issue_flag): do NOT default positive. Calibrate strictly and neutrally from transcript evidence — absence of clear positive signals means Neutral/Medium/Low, never an inflated score.\n- Ask yourself: \"Would this pass in a real Indian call center?\" — not \"Is this scripted perfectly?\"\n- STT transcripts are noisy. Sarvam STT garbles words due to background noise, accents, and codec artifacts. Judge the AGENT, not the transcript quality.\n- Evaluate MEANING and INTENT, never exact wording. A concept correctly communicated in broken English, Hindi, or any phonetically distorted form is still correctly communicated.\nRespond with valid raw JSON only. Do not wrap in markdown code blocks. No explanation. No extra text whatsoever.\nEvaluate this Prudent Corporate Advisory call. Return 15 KPIs + 7 SOPs + BFSI Compliance as JSON.\n### CONTEXT\nDirection: {{call_type}} | Campaign: {{campaign}}\nCall Duration: {{duration_context}}\nProducts: Mutual Funds, SIP, Liquiloan, eMandate, KYC, Stock Broking, Portfolio\nLanguages: Hindi/Gujarati/English/Mixed — code-switching is normal, never penalise. Classify by the language carrying the substantive meaning of the conversation. Natural borrowing of operational or universal words from another language is not code-switching. Use Mixed only when two languages are genuinely and meaningfully alternated throughout.\nSpeakers: Identify agent by content (greets, handles query). Speaker labels are unreliable.\n### STT RULES\nSarvam STT is noisy — before penalising any SOP or KPI:\n- Garbled or misspelled words are acoustic artifacts, not agent errors (\"gud mornig\" = \"Good morning\").\n- Garbled company name in opening = STT artifact, never flag.\n- Conversation reaching account/portfolio/SIP details = identity established through context.\n- Background or third-party audio = ignore entirely. Never infer risk or ZTP from noise.\n- STT noise tolerance covers transcription QUALITY — a phonetically distorted greeting (\"gud morneng\", \"good moring\", \"gud evning\") still passes SOP 1. It does NOT transform a structurally absent greeting into a passing one: a call-pickup acknowledgement (\"hello\", \"haan bolo\") has no greeting structure to distort, so STT tolerance is irrelevant to it.\n### VALIDITY TIERS — evaluate first, then proceed or stop\nTIER 0 NON-CONTACT: Only telecom automation (switched off / not reachable / voicemail). Zero human speech.\n→ all sop=NA, kpi1=No, kpi2=No, kpi3=Efficient, kpi4=No, kpi5=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=non-contact, tier=0\nTIER 1 DISCONNECT: Agent connected but line dropped before any customer query, concern, or actionable topic was raised. No meaningful exchange occurred.\n→ all sop=NA, kpi1=No, kpi3=Efficient, kpi4=No, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=1\nRule: Agent not at fault. Line drop = telecom event. No SOP degrade, no risk flag, no ZTP, coaching stays Green.\nTIER 2 HOLD-DROP: Caller disconnected while queued or on hold before the interaction could complete.\n→ GATE CHECK first: Did a meaningful customer interaction (query raised, issue discussed, topic exchanged) actually occur before the hold event?\n  - NO meaningful interaction before hold (e.g. \"Hello sir, one moment\", immediate queue transfer, hold music before any dialogue, \"please hold\" with no query): all sop=NA.\n  - YES meaningful interaction occurred before hold: evaluate sop_greeting + sop_caller_identified from pre-hold content only; all other sop=NA.\n→ kpi4=No (hold disconnect ≠ abandonment), kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=2\nRule: Customer leaving hold is their choice, not agent abandonment. No risk or ZTP flags regardless of hold duration.\nTIER 3 NOISE: Third-party or background audio dominates. No clear agent-customer exchange.\n→ all sop=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=3\nRule: Third-party audio cannot be attributed to the agent. Never set risk or ZTP from background voices — even if the noise resembles a ZTP event.\nTIER 4 NON-EVALUABLE: Blank transcript, or content consists only of greetings/filler with no customer query or topic raised, or language is unrecognised.\n→ all sop=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=4\nTIER 5 VALID: Meaningful agent-customer exchange present. Proceed with full evaluation.\n### CALL TERMINATION ATTRIBUTION\nDetermines whether agent had a realistic opportunity window — used by SOP 5 and SOP 6 only.\nNA (customer-driven, agent had no window): customer exits mid-resolution, uses frustrated or dismissive language before a natural closing point, or call ends during transfer/trade/escalation/hold with no return.\nNo (agent-opportunity existed): call resolved calmly, customer acknowledged outcome and was waiting — agent had a clear window and skipped closure.\nRule: a frustrated \"bye\" mid-conversation = customer termination = NA. A calm \"okay bye\" after full resolution = agent opportunity = evaluate normally.\n### SOPs (7 Rules)\nSOP 1 Greeting | Standard for {{campaign}}: {{greeting_standard}}\nYES: Agent's opening contains recognisable structural greeting intent — any combination of (a) warm/time-based salutation in any form, (b) self-identification by name, (c) brand/company reference, or (d) service offer/willingness indicator. Elements may be partial, STT-garbled, code-mixed, or Hinglish — full noise tolerance applies within a genuine greeting attempt.\nNO: Opening is ONLY a call-pickup acknowledgement — single/repeated word or pure reactive phrase with zero structural elements.\nSOP 1 override — do NOT default to YES here: YES requires positive evidence of structure. STT tolerance covers distortion within a real greeting; it does NOT apply to bare pickup acknowledgements. \"gud morneng [name] Prudent se\" = YES. \"hello\" alone = NO. Garbled name/company = STT artifact, never an error.\nSOP 2 Caller Identified | Inbound: YES if identity established by any means — explicit (PAN/mobile/client ID asked) OR implicit (caller addressed by name, or account/portfolio/SIP details discussed). Context-based identity is valid. DealerDesk/Partner lines = system-verified at connect, mark YES automatically. Outbound: YES if agent confirms speaking to right person (\"Am I speaking with [Name]?\").\nSOP 3 Hold Permission | Agent asks before putting on hold if check likely >1 min. NA = no hold.\nSOP 4 Hold Refresh | Agent updates customer if hold >1 min. NA = hold <1 min or no hold.\nSOP 5 Closing | Agent asks \"anything else?\" before ending. Accept any natural equivalent. NA = closing phase unreachable (line drop, customer-driven termination). No = agent had a clear opportunity and skipped it.\nSOP 6 Feedback IVR | Agent offers IVR transfer. NA = SOP 5 is NA, or customer ended call before closing phase. No = agent had a post-resolution opportunity and skipped it.\nSOP 7 Behaviour | Professional throughout — no rudeness, no deliberate disconnect.\n### KPIs (15 Rules)\nKPI 1 Resolution: Fully resolved? Yes|No|Partial|NA\nKPI 2 FCR: Resolved without follow-up or escalation? Yes|No|Unknown|NA\nKPI 3 AHT: Efficient = within the {{aht_target_min}}-min target. Acceptable = slightly over but justified. Inefficient = excessive filler or repetition.\nKPI 4 Abandonment: Agent DELIBERATELY ended the call to avoid a query? Line drops and hold disconnects = No. Only flag with clear intentional evidence.\nKPI 5 CSAT: Estimate from tone, language, and outcome. High|Medium|Low|NA\nKPI 6 Quality 1-5: NA SOPs never count as gaps — only evaluate SOPs that were actually applicable.\n  5 = applicable SOPs followed + query fully resolved + professional throughout.\n  4 = query resolved + agent handled well with at most 1 minor real SOP gap. Default for competent, well-handled calls.\n  3 = query resolved or reasonably attempted, but 1-2 genuine agent-side SOP gaps exist.\n  2 = multiple real agent-side failures, or partial resolution due to agent error or knowledge gap. Partial resolution caused by system/backend issues beyond agent control does not drop score to 2.\n  1 = rude or deliberate abandonment. Never assign 1-2 without specific evidence of agent failure.\nKPI 7 Hold Compliance: Hold permission + refresh correct? Compliant|Non-Compliant|NA\nKPI 8 IVR Transfer: Transferred to feedback IVR? Yes|No|Customer Refused|NA\nKPI 9 Process Adherence: Full=all steps. Partial=1-2 missing but query handled. None=no structure.\nKPI 10 Escalation: Escalated to senior or another department? Yes|No|NA\nKPI 11 Intent: Use EXACTLY one label from the taxonomy below. Copy character-for-character. Do not paraphrase, abbreviate, or invent labels.\n  Inbound: Complaint|Query|SIP Start|SIP Stop|SIP Modify|Redemption|Purchase|KYC Initiation|KYC Update|eMandate Setup|eMandate Issue|Login/OTP Issue|ARN Transfer|Portfolio Review|Liquiloan Query|Stock Broking Query|Account Management|General Information|Callback Request\n  Outbound: SIP Review|Mandate Follow-up|Missed Payment|ARN Renewal|KYC Completion|Lapsed SIP|Campaign Outreach|Virtual RM Advisory|Lead Follow-up|Upsell/Cross-sell\nkpi11_intent_detail: A precise, detailed one-sentence explanation of what the customer needed or did, specifically focusing on the core request and context. For example: \"Bank account registration query - client wants bank account registered details\" or \"Mutual fund redemption deduction delay inquiry due to bank holiday processing\".\nkpi11_sub_category: A detailed sub-category classification representing the exact query/action, such as \"Bank account registration status check\", \"SIP stop request via mobile app\", or \"eMandate deactivation check\".\nKPI 12 Service Level: \"Requires Telephony Data\"\nKPI 13 Repeat Call: \"Requires CRM Data\"\nKPI 14 Query Raised: Support ticket raised during or after this call? Yes|No|NA\nKPI 15 Sentiment: Tone of both customer and agent.\n### THREE-WAY CLASSIFICATION — read the full conversation arc before deciding. Ask three questions in sequence:\n  [Q1] INTENT: Is the customer primarily requesting an action/service, seeking information or guidance, seeking explanation or resolution, or expressing sustained dissatisfaction?\n  [Q2] EMOTIONAL ARC: Does the customer's frustration — if any — resolve or reduce by call end, or persist and escalate?\n  [Q3] OUTCOME: Does the call close with the need met, accepted as in-progress, or unresolved with the customer still emotionally charged?\n\"intent\" (Inquiry) — customer is requesting an action, seeking general information, or checking account/service status. Tone neutral to polite. No failed prior commitment. The need is handled, in-progress, or acknowledged.\n  Signal: customer calls TO DO something (stop SIP, activate account, submit KYC, set up mandate, initiate redemption) OR TO KNOW something (product charges, process steps, eligibility, LAS/Fundzbazar/account status, general guidance, product understanding). Urgency is fine; frustration is not the dominant note.\n  Hard boundary: if a previously placed request has specifically failed or was due but not executed, the follow-up is a complaint. A status check on a normally in-progress request is still intent.\n\"query\" — customer has an active account-specific problem, service failure, or process blockage. Agent provides explanation, timeline, or corrective guidance. Frustration may exist but does not escalate to call end. Call closes with the concern addressed or a clear next step established, even if the issue is not yet fully resolved.\n  Signal: customer calls because something is wrong or stuck — SIP rejection, mandate failure, redemption not credited, login/OTP issue, status not updating, TAT exceeded, payment not processed. An issue exists but the conversation arc bends toward resolution or acknowledged next steps.\n  Hard boundary: frustration that actively escalates toward call end = complaint. Flat or resigned-neutral tone at call end (\"theek hai dekh lete hain\", \"okay I'll wait\") = query. A customer who ends neutral-but-not-delighted is a query, not a complaint.\n\"complaint\" — sustained dissatisfaction that persists to call end. One or more must be true: a prior commitment or request has failed; this is a repeat contact for the same unresolved issue; trust is visibly damaged; the agent's response does not satisfy the customer; the call ends with the issue still open and the customer still frustrated.\n  Key rule: a delay alone ≠ complaint. Concern alone ≠ complaint. Frustration that resolves during the call ≠ complaint. Only sustained, unresolved dissatisfaction at call end = complaint.\n  Complaint signals (each one raises the probability, but MUST be assessed against the full arc):\n    — Negative outcome: service outcome did not match expectation (funds not credited, SIP not stopped despite prior request, mandate failed)\n    — Failed commitment: previous promise or timeline was not honoured\n    — Repeat contact: \"pehle bhi bola tha\", \"last time I called\", \"already complained\"\n    — Sustained frustration: same complaint repeated, request for senior/manager, tone escalates rather than calms\nkpi11_intent must tell the same story as call_classification:\n  • kpi11_intent = \"Complaint\" → call_classification = \"complaint\"\n  • kpi11_intent = \"General Information\" / \"Callback Request\" / any transactional or informational label + no active problem + no sustained dissatisfaction → call_classification = \"intent\"\n  • kpi11_intent = \"Query\" / any problem-state, service-failure, or pending-issue label + concern addressed or next step given by call end → call_classification = \"query\"\n  • Any label where complaint signals dominate the conversation arc → call_classification = \"complaint\"; use call_topic for the subject domain\n  • Non-contact / pre-filter invalid → \"non-contact\" or \"invalid\"\n### CLASSIFICATION\ncall_topic: KYC|SIP|Redemption|Mandate|eMandate|Login/OTP|ARN|Portfolio|Liquiloan|Stock Broking|Account Management|General Inquiry|Complaint|Other Products|Other|SIP Review|Mandate Follow-up|Missed Payment|ARN Renewal|KYC Completion|Lapsed SIP|Campaign Outreach|Virtual RM Advisory|Lead Follow-up|Upsell/Cross-sell\n  Note: call_topic captures the subject domain regardless of classification. A complaint about SIP → call_topic=SIP. Use call_topic=Complaint only when no specific subject domain is identifiable.\n  Other Products = topic is outside this campaign's core scope but within the identifiable financial domain (use this when any product context is detectable).\n  Other = topic cannot be identified at all. Prefer Other Products over Other whenever any subject is detectable.\ncall_sub_topic: A detailed, context-aware business issue description.\n  Format: Title Case or Normal Case. Use a clear separator \" — \" to join the core topic with the specific issue, context, error message, platform (e.g. app, website, WhatsApp), or blocker (e.g. blackout window, signature mismatch, folio details).\n  Good examples of sub-topics from Prudent Corporate Advisory Services:\n  - \"SIP stop request via app — deferred due to 7-day installment blackout window\"\n  - \"Physical mandate bank registration — cooperative bank name order mismatch — urgent activation request\"\n  - \"OTP not received on mobile during SIP/mandate registration — folio contact detail mismatch\"\n  - \"Change of mobile number — form rejected (number linked to another PAN)\"\n  - \"Physical redemption rejected — signature mismatch (Nippon India ELSS)\"\n  - \"SIP bounce — prior intimation email not received — email delivery log requested by partner\"\n  - \"Bank Account Change — rejected due to signature mismatch, static report discrepancy\"\n  - \"eMandate rejection and UPI mandate deactivation status check\"\n  - \"Missed call inquiry — customer wants to know reason for missed call from company number\"\n  - \"Availability of Fundzbazar account opening process video tutorial\"\n  - \"LAS shortfall repayment and outstanding interest payment process\"\n### CALL TOPIC BOUNDARY — apply BEFORE finalising call_topic and kpi11_intent\nThis call arrived on the {{campaign}} campaign line. The expected product scope for {{campaign}} is: {{core_topics}}.\nBefore assigning call_topic, ask yourself in this order:\n  1. Is the call clearly and primarily about one of the core topics listed above for {{campaign}}? → use that topic.\n  2. Is it clearly about a different campaign's well-defined topic (e.g. \"Stock Broking\" for equity trading, \"Liquiloan\" for a loan product) that happened to come in on this line? → use that specific topic.\n  3. Is the call about something outside both lists — any financial product, service, or query not clearly covered by the standard campaign taxonomy? → call_topic=Other Products, call_sub_topic=the specific product or service the customer is discussing.\n\"Other Products\" is the principled default for any call that concerns a product, service, or topic outside the campaign's core scope. This includes any product you have not seen in the taxonomy before. Do NOT force-map an unrecognised topic to the closest-sounding existing topic — that is the incorrect fallback this rule is designed to prevent.\nkpi11_intent for Other Products calls: use generic taxonomy labels (Query, General Information, Complaint, Callback Request). Do not use product-specific intents from a different campaign line unless the call is explicitly and unmistakably about that product.\nkyc_question_type (only if KYC): why_kyc|about_process|document_submission|verification|null\npartner_sentiment_rating: Sentiment of the channel distributor/partner caller. NA when the caller is a retail investor rather than a distributor/partner.\nrepeat_call_signal: Judge by reasoning, not just fixed phrases.\n  Yes = explicit OR strongly-implied prior contact for the same issue. Explicit phrases (\"pehle bhi bola tha\", \"last time I called\", \"already raised this\", \"already complained\", \"second/third time calling\"), OR an implied prior-contact state such as a prolonged unresolved duration or an already-escalated issue (e.g. \"15 din se try kar rahi hoon\", \"already escalated to CAMPS\", \"still not resolved since last week\").\n  No = the interaction is clearly a first-time contact for this issue.\n  Unknown = no signal either way (cannot tell if first-time or repeat).\n  Must stay consistent with the complaint repeat-contact flag — if repeat contact is a complaint signal here, repeat_call_signal = Yes.\n### ORGANISATION RULES — from this organisation's Company Profile (its uploaded SOPs, policies, KPIs and intents). When this section is not empty it takes precedence over the brand names, SOP wording, intent labels and BFSI rules above: score the SOPs listed here (in order) and pick KPI 11 from this taxonomy.\n{{step_18['company_rules_text']}}\n\n### TRANSCRIPT\n{{step_17['data']['response']}}{{step_18}}\n### BFSI REGULATORY & COMPLIANCE RULES (SEBI / RBI / IRDAI)\n1. GUARANTEED RETURNS MISSELLING CHECK (ZTP Event):\n   Agent MUST NOT promise fixed or guaranteed returns on market-linked financial products (Mutual Funds, Equity, SIP). Promising fixed returns (e.g. \"20% return guaranteed\") = MANDATORY ZTP VIOLATION! Flag bfsi_false_guarantee_flag = \"Yes\", ztp_violation = \"Yes\", compliance_risk = \"High\", coaching_priority = \"Red\".\n2. MANDATORY INVESTMENT RISK DISCLAIMER:\n   When recommending or advising on mutual fund schemes, agent SHOULD mention: \"Mutual fund investments are subject to market risks, read all scheme related documents carefully.\" If skipped during active scheme recommendation, set bfsi_risk_disclaimer_spoken = \"No\", compliance_risk = \"Medium\".\n3. FINANCIAL IDENTITY & PII PRIVACY:\n   Agent MUST verify 2+ identity details (PAN / DOB / Client ID / Mobile) BEFORE disclosing sensitive account info (Folio balance, Bank Account Details, NAV holdings). Disclosing financial data without identity verification = bfsi_identity_verified = \"No\", compliance_risk = \"Medium\".\n4. 7-DAY SIP BLACKOUT ADVISORY:\n   For SIP stop or modification queries, agent MUST accurately state that requests placed within 7 business days of the installment date will apply from the NEXT month's cycle.\n5. EMANDATE & BANK REGISTRATION ADVISORY:\n   Agent MUST accurately explain bank rejection reasons (Signature Mismatch, Name Order Discrepancy, Unsupported Cooperative Bank, OTP Expiry) and provide exact resolution steps.\n6. REDEMPTION & NAV CUTOFF ACCURACY:\n   Agent MUST accurately state 3:00 PM NAV cutoff timing and correct payout TATs (Liquid Funds = T+1 day, Equity Funds = T+2 days).\n### COACHING AND COMPLIANCE\nimprovement_areas: Genuine behavioural gaps with clear evidence only. Write exclusively in clear English. Never flag: greeting phonetics, company name STT garbling, language or accent, caller ID when context progressed.\nFlag only: hold without permission, no hold refresh, unresolved query without follow-up, wrong information given, zero closing, genuine rudeness.\nHallucination guard: Never infer or flag improvement areas based on STT noise, garbled words, silence, interrupted sentences, one-sided audio, incomplete transcripts, or any call where context is insufficient to clearly and unambiguously attribute a behaviour to the agent. If the evidence is unclear or the call is non-evaluable, set improvement_areas to None.\nNA guard: Never generate an improvement area for any SOP field marked NA — NA means the scenario was outside the agent's control, not a behavioural gap. This includes SOP 5 and SOP 6 when NA due to customer-driven termination.\nrecommended_actions: For every improvement area identified above, provide a specific, practical, and immediately implementable corrective action written strictly in English. Write one recommendation per gap, in the same order. Each recommendation must be concrete — state what the agent should say, do, or change in English (for example: \"After resolving the main query, always ask 'Is there anything else I can assist you with?' before ending the call. Also, offer to transfer to feedback IVR by asking 'Would you like to provide feedback on our service?'\"). Recommendations should feel operationally usable the very next day. If improvement_areas is None, set this field to None as well.\nZTP violations — evaluate against this principle: any agent behaviour that directly harms the customer financially, exposes the customer or company to legal/regulatory risk, or represents a deliberate ethical breach with clear intent. The five scenarios below are definitive ZTP events; any behaviour that unambiguously satisfies the principle also qualifies even if not literally listed:\n1. Incorrect or misleading investment advice (wrong returns, false guarantees, misselling)\n2. Sharing customer PAN/mobile/balance with a third party\n3. Abusive, threatening, or discriminatory language\n4. Deliberately ending the call to avoid a query\n5. Soliciting money outside the official platform\nHard guards: background audio and third-party voices are never ZTP. STT noise or garbled speech is never sufficient basis for a ZTP flag — only unambiguous, clearly attributable agent speech qualifies.\ncompliance_risk — evaluate actual risk trajectory, not just category label. Ask: does this agent behaviour create real potential for financial harm, regulatory exposure, or serious customer trust violation?\nHigh = ZTP event, or clear misinformation with direct financial impact on the customer.\nMedium = Unverified promise about returns/timelines, or skipped mandatory regulatory step that could cause harm if uncorrected.\nLow = Process gap only — no customer harm possible (IVR skipped, closing skipped, formal ID not done but context clear).\nNone = No risk to customer, company, or regulatory standing.\nNever High or Medium for: informal tone, Hinglish, missing SOPs, non-verification with context, or noise.\nNON-VERIFICATION RULE: Missing formal caller ID = at most Low, and only when zero identification of any kind. Never Medium, never High.\nConsistency rule: ztp_violation=Yes forces compliance_risk=High — these fields must never contradict each other.\ncoaching_priority:\nRed = ZTP or High risk or genuine rudeness or 3+ real SOP failures.\nAmber = 1-2 SOP gaps or AHT significantly over or partial resolution.\nGreen = minor or no gaps, query resolved. Default to Green or Amber. Reserve Red for serious issues only.\ncoaching_summary_note: A clear, actionable 2-4 sentence coaching note written specifically for the agent strictly in English. Synthesize improvement_areas, recommended_actions, and coaching_reason into a direct, friendly, and practical coaching note as a Team Leader or QA Manager would write in a 1-on-1 coaching session. State (1) what went well, (2) exact mistake/gap if any, and (3) what the agent should say/do next time in English (for example: \"Next time, always ask 'Do you have any other questions?' before ending and offer feedback IVR transfer.\"). If zero gaps (coaching_priority = Green and improvement_areas = None), set coaching_summary_note to: \"Query resolved effectively with zero SOP or compliance gaps. Maintain this standard.\"\nsystemic_issue_flag: Yes if the issue described appears to be a recurring process failure or platform-wide problem likely affecting multiple customers. No for isolated individual incidents.\n### OUTPUT JSON\n{\n  \"language\": \"Hindi|Gujarati|English|Mixed|Unknown\",\n  \"agent_speaker_num\": 1,\n  \"call_validity_tier\": \"0|1|2|3|4|5\",\n  \"sop_greeting\": \"Yes|No|NA\",\n  \"sop_caller_identified\": \"Yes|No|NA\",\n  \"sop_hold_permission\": \"Yes|No|NA\",\n  \"sop_hold_refresh\": \"Yes|No|NA\",\n  \"sop_closing_script\": \"Yes|No|NA\",\n  \"sop_feedback_ivr\": \"Yes|No|NA\",\n  \"sop_no_behaviour_issue\": \"Yes|No|NA\",\n  \"kpi1_call_resolution\": \"Yes|No|Partial|NA\",\n  \"kpi1_note\": \"brief reason\",\n  \"kpi2_fcr\": \"Yes|No|Unknown|NA\",\n  \"kpi2_note\": \"brief reason\",\n  \"kpi3_aht_efficiency\": \"Efficient|Acceptable|Inefficient|NA\",\n  \"kpi3_note\": \"brief reason\",\n  \"kpi4_call_abandonment\": \"Yes|No|NA\",\n  \"kpi4_note\": \"brief reason\",\n  \"kpi5_csat_indicator\": \"High|Medium|Low|NA\",\n  \"kpi5_note\": \"brief reason\",\n  \"kpi6_call_quality_score\": 3,\n  \"kpi6_note\": \"brief reason\",\n  \"kpi7_hold_compliance\": \"Compliant|Non-Compliant|NA\",\n  \"kpi7_note\": \"brief reason\",\n  \"kpi8_transfer_to_ivr\": \"Yes|No|Customer Refused|NA\",\n  \"kpi9_process_adherence\": \"Full|Partial|None|NA\",\n  \"kpi9_note\": \"brief reason\",\n  \"kpi10_escalated\": \"Yes|No|NA\",\n  \"kpi10_note\": \"brief reason\",\n  \"kpi11_intent\": \"exact label from taxonomy\",\n  \"kpi11_intent_detail\": \"detailed explanation\",\n  \"kpi11_sub_category\": \"sub-category\",\n  \"kpi11_secondary_intent\": \"secondary intent from same taxonomy if call clearly has a dominant second purpose, or None if single-purpose\",\n  \"kpi12_service_level\": \"Requires Telephony Data\",\n  \"kpi13_repeat_call\": \"Requires CRM Data\",\n  \"kpi14_query_raised\": \"Yes|No|NA\",\n  \"kpi14_note\": \"brief reason\",\n  \"kpi15_customer_sentiment\": \"Positive|Neutral|Negative|NA\",\n  \"kpi15_agent_sentiment\": \"Professional|Neutral|Unprofessional|NA\",\n  \"kpi15_sentiment_detail\": \"brief reason\",\n  \"call_summary\": \"2-3 sentence factual summary\",\n  \"improvement_areas\": \"specific actionable coaching points in English, or None\",\n  \"recommended_actions\": \"specific practical corrective action in English, or None\",\n  \"compliance_risk\": \"High|Medium|Low|None\",\n  \"compliance_risk_detail\": \"detail or None\",\n  \"ztp_violation\": \"Yes|No\",\n  \"ztp_detail\": \"detail or None\",\n  \"coaching_priority\": \"Red|Amber|Green\",\n  \"coaching_reason\": \"reason\",\n  \"coaching_summary_note\": \"complete 2-4 sentence actionable AI coaching note for the agent written strictly in English\",\n  \"bfsi_false_guarantee_flag\": \"Yes|No\",\n  \"bfsi_risk_disclaimer_spoken\": \"Yes|No|NA\",\n  \"bfsi_identity_verified\": \"Yes|No|NA\",\n  \"bfsi_product_category\": \"Mutual Funds|SIP|eMandate|KYC|Liquiloan|Stock Broking|Portfolio|Other\",\n  \"bfsi_compliance_score\": 100,\n  \"agent_knowledge_gap\": \"Yes|No|NA\",\n  \"agent_knowledge_gap_detail\": null,\n  \"probing_quality\": \"Good|Average|Poor|NA\",\n  \"probing_note\": \"brief reason\",\n  \"empathy_score\": 3,\n  \"empathy_note\": \"brief reason\",\n  \"customer_type\": \"Investor|Partner|Internal|Unknown\",\n  \"nri_indicator\": \"Yes|No|Unknown\",\n  \"call_complexity\": \"Simple|Moderate|Complex|NA\",\n  \"customer_pain_point\": \"description or None\",\n  \"churn_risk\": \"High|Medium|Low|None\",\n  \"churn_risk_detail\": \"detail or None\",\n  \"missed_opportunity\": \"Yes|No|NA\",\n  \"missed_opportunity_detail\": \"detail or None\",\n  \"systemic_issue_flag\": \"Yes|No\",\n  \"systemic_issue_detail\": \"detail or None\",\n  \"repeat_call_signal\": \"Yes|No|Unknown\",\n  \"call_classification\": \"intent|query|complaint\",\n  \"call_topic\": \"KYC|SIP|Redemption|Mandate|eMandate|Login/OTP|ARN|Portfolio|Liquiloan|Stock Broking|Account Management|General Inquiry|Complaint|Other Products|Other|SIP Review|Mandate Follow-up|Missed Payment|ARN Renewal|KYC Completion|Lapsed SIP|Campaign Outreach|Virtual RM Advisory|Lead Follow-up|Upsell/Cross-sell\",\n  \"call_sub_topic\": \"specific sub-topic string\",\n  \"kyc_question_type\": \"why_kyc|about_process|document_submission|verification|null\",\n  \"partner_sentiment_rating\": \"Positive|Neutral|Negative|NA\"\n}",
+                              "maxTokens": "10000",
+                              "temperature": 0.7,
+                              "puchoModelKey": "pucho_normal_chat_pro",
+                              "puchoProviderName": "Pucho"
+                            },
+                            "pieceName": "@puchoaistudio/tool-llm-ai",
+                            "actionName": "askLlm",
+                            "sampleData": {},
+                            "pieceVersion": "2.3.3",
+                            "propertySettings": {
+                              "model": {
+                                "type": "MANUAL"
+                              },
+                              "query": {
+                                "type": "MANUAL"
+                              },
+                              "maxTokens": {
+                                "type": "DYNAMIC"
+                              },
+                              "temperature": {
+                                "type": "MANUAL"
+                              },
+                              "maxTokensNote": {
+                                "type": "MANUAL"
+                              },
+                              "puchoModelKey": {
+                                "type": "MANUAL"
+                              },
+                              "puchoProviderName": {
+                                "type": "MANUAL"
+                              }
+                            },
+                            "errorHandlingOptions": {
+                              "retryOnFailure": {
+                                "value": false
+                              },
+                              "continueOnFailure": {
+                                "value": false
+                              }
+                            }
+                          },
+                          "nextAction": {
+                            "name": "step_22",
+                            "skip": false,
+                            "type": "CODE",
+                            "valid": true,
+                            "settings": {
+                              "input": {
+                                "ask_llm": "{{step_21['data']['response']}}",
+                                "trigger": "{{trigger['body']}}",
+                                "code_tool": "{{step_18}}"
+                              },
+                              "sampleData": {},
+                              "sourceCode": {
+                                "code": "// @ts-nocheck\n/**\n * PuchoAI Main Processor Code Step (Consolidated Post-Analysis Parser - Mapped to code_tool & file_details)\n * \n * Inputs:\n * - ask_llm: Output from the Ask LLM (Analysis) step.\n * - code_tool: Output from the first Code step (Unified Code Tool / Filename parser).\n * - file_details: Mapped to the current loop item (5. Loop on Items -> item)\n * - trigger: The raw trigger webhook data.\n * - transcript: The corrected transcript from the Transcript Correction step.\n * - duration_sec: Mapped call duration in seconds.\n */\n\nexport const code = async (inputs) => {\n  // Helper to recursively parse and clean/unwrap nested or stringified JSON values\n  const cleanInputObj = (val) => {\n    if (!val) return {};\n    let target = val;\n    \n    // Parse if it's a string\n    if (typeof target === 'string') {\n      try {\n        target = JSON.parse(target);\n      } catch (e) {\n        try {\n          const m = target.match(/\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\]/);\n          if (m) {\n            target = JSON.parse(m[0]);\n          } else {\n            return {};\n          }\n        } catch (err) {\n          return {};\n        }\n      }\n    }\n    \n    // Recursively unwrap common nested properties\n    let lastTarget = null;\n    while (target && typeof target === 'object' && target !== lastTarget) {\n      lastTarget = target;\n      if (target.data !== undefined) {\n        target = target.data;\n      } else if (target.response !== undefined) {\n        target = target.response;\n      } else if (target.body !== undefined) {\n        target = target.body;\n      } else {\n        break;\n      }\n      \n      // If the unwrapped target is stringified, parse it\n      if (typeof target === 'string') {\n        try {\n          target = JSON.parse(target);\n        } catch (e) {\n          try {\n            const m = target.match(/\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\]/);\n            if (m) {\n              target = JSON.parse(m[0]);\n            } else {\n              break;\n            }\n          } catch (err) {\n            break;\n          }\n        }\n      }\n    }\n    return (typeof target === 'object' && target !== null) ? target : {};\n  };\n\n  // 1. Safe parsing for inputs\n  const codeTool = cleanInputObj(inputs.code_tool);\n  const fileDetails = cleanInputObj(inputs.file_details);\n  const trigger = cleanInputObj(inputs.trigger);\n  const triggerBody = trigger['body'] || trigger || {};\n\n  const durationSec = fileDetails.duration_seconds || codeTool.duration_seconds || parseFloat(inputs.duration_sec) || parseFloat(triggerBody['duration']) || parseFloat(trigger['duration']) || 0;\n  const transcript = fileDetails.transcript || codeTool.transcript || inputs.transcript || \"\";\n\n  // 2. Resolve metadata from loop item (file_details) or fallbacks\n  let rawFilename = fileDetails.fileName || fileDetails.filename || codeTool.filename || inputs.filename || triggerBody['filename'] || trigger['filename'] || \"\";\n  \n  // Clean folder path from filename (e.g. \"Calls_recording/name.mp3\" -> \"name.mp3\")\n  let filename = rawFilename;\n  if (filename && filename.includes('/')) {\n    filename = filename.split('/').pop();\n  }\n\n  let agentCode = fileDetails.agent_code || codeTool.agent_code || inputs.agent_code || triggerBody['agent_code'] || trigger['agent_code'] || \"\";\n  let agentName = fileDetails.agent_name || codeTool.agent_name || inputs.agent_name || triggerBody['agent_name'] || trigger['agent_name'] || \"\";\n  let mobileNumber = fileDetails.mobile_number || codeTool.mobile_number || inputs.mobile_number || triggerBody['mobile_number'] || trigger['mobile_number'] || \"\";\n  let callDate = fileDetails.call_date || codeTool.call_date || inputs.call_date || triggerBody['call_date'] || trigger['call_date'] || \"\";\n  let campaign = fileDetails.campaign || codeTool.campaign || inputs.campaign || triggerBody['campaign'] || trigger['campaign'] || \"NONPLC\";\n\n  // Segment filename parsing if filename is present but codes are missing\n  if (filename && (!agentCode || !mobileNumber)) {\n    const match = filename.match(/^(\\d{8})-(\\d+)_(\\d+)_([^_]+)_([^-._]+)/);\n    if (match) {\n      const rawDate = match[1];\n      if (!callDate) {\n        callDate = `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`;\n      }\n      if (!mobileNumber) {\n        mobileNumber = match[3];\n      }\n      if (!agentCode) {\n        agentCode = match[4];\n      }\n      const parsedCampaign = match[5].toUpperCase();\n      if (parsedCampaign) {\n        campaign = parsedCampaign;\n      }\n    }\n  }\n\n  // Live query from Supabase to match the code with the name registered via Add User\n  if (agentCode && (!agentName || agentName.toLowerCase().startsWith('agent '))) {\n    const supabaseUrl = '';\n    const supabaseAnonKey = '';\n\n    try {\n      const dbResponse = await fetch(`${supabaseUrl}/rest/v1/agents?agent_code=eq.${agentCode}&select=agent_name`, {\n        headers: {\n          'apikey': supabaseAnonKey,\n          'Authorization': `Bearer ${supabaseAnonKey}`\n        }\n      });\n      if (dbResponse.ok) {\n        const dbData = await dbResponse.json();\n        if (dbData && dbData.length > 0) {\n          agentName = dbData[0].agent_name;\n        }\n      }\n    } catch(e) {\n      // Revert to fallback dynamically\n    }\n\n    if (!agentName) {\n      agentName = `Agent ${agentCode}`;\n    }\n  }\n\n  // 4. Safe parsing for LLM output\n  const parsed = cleanInputObj(inputs.ask_llm || inputs.llm_output);\n\n  // ─── DYNAMIC TOPIC & SUB-TOPIC RESOLUTION FROM LLM RESPONSE ───\n  const callTopic = parsed.call_topic || parsed.kpi11_intent || parsed.call_intent || \"Other\";\n  const callSubTopic = parsed.call_sub_topic || parsed.kpi11_sub_category || parsed.kpi11_intent_detail || \"\";\n  const callCategory = parsed.call_classification || parsed.call_category || \"query\";\n\n  // Compute SOP score: count \"Yes\" outcomes\n  const sopFields = ['sop_greeting', 'sop_caller_identified', 'sop_hold_permission', 'sop_hold_refresh', 'sop_closing_script', 'sop_feedback_ivr', 'sop_no_behaviour_issue'];\n  let sopScore = 0;\n  for (const f of sopFields) {\n    if (parsed[f] === 'Yes') sopScore++;\n  }\n\n  // Compute individual KPI Scores\n  const kpi1Score = parsed.kpi1_call_resolution === 'Yes' ? 100 : parsed.kpi1_call_resolution === 'Partial' ? 60 : parsed.kpi1_call_resolution === 'NA' ? 80 : 0;\n  const kpi2Score = parsed.kpi2_fcr === 'Yes' ? 100 : parsed.kpi2_fcr === 'Unknown' ? 60 : 0;\n  const kpi3Score = parsed.kpi3_aht_efficiency === 'Efficient' ? 100 : parsed.kpi3_aht_efficiency === 'Acceptable' ? 70 : 30;\n  const kpi4Score = parsed.kpi4_call_abandonment === 'No' ? 100 : 0;\n  const kpi5Score = parsed.kpi5_csat_indicator === 'High' ? 100 : parsed.kpi5_csat_indicator === 'Medium' ? 60 : 30;\n  const kpi14Score = parsed.kpi14_query_raised === 'Yes' ? 100 : parsed.kpi14_query_raised === 'NA' ? 80 : 50;\n  \n  // Calculate average KPI Score\n  const kpiScore = Math.round((kpi1Score + kpi2Score + kpi3Score + kpi4Score + kpi5Score + kpi14Score) / 6);\n\n  // Format sop_results as an ARRAY of objects (expected by dashboard compliance page)\n  const sopResultsArray = [\n    {\n      sop_id: 1,\n      name: \"Professional Greeting\",\n      result: parsed.sop_greeting === \"Yes\" ? \"Pass\" : parsed.sop_greeting === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_greeting_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 2,\n      name: \"Caller Identified\",\n      result: parsed.sop_caller_identified === \"Yes\" ? \"Pass\" : parsed.sop_caller_identified === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_caller_identified_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 3,\n      name: \"Hold Permission\",\n      result: parsed.sop_hold_permission === \"Yes\" ? \"Pass\" : parsed.sop_hold_permission === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_hold_permission_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 4,\n      name: \"Hold Refresh\",\n      result: parsed.sop_hold_refresh === \"Yes\" ? \"Pass\" : parsed.sop_hold_refresh === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_hold_refresh_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 5,\n      name: \"Closing Script\",\n      result: parsed.sop_closing_script === \"Yes\" ? \"Pass\" : parsed.sop_closing_script === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_closing_script_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 6,\n      name: \"Feedback IVR\",\n      result: parsed.sop_feedback_ivr === \"Yes\" ? \"Pass\" : parsed.sop_feedback_ivr === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_feedback_ivr_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 7,\n      name: \"No Behaviour Issue\",\n      result: parsed.sop_no_behaviour_issue === \"Yes\" ? \"Pass\" : parsed.sop_no_behaviour_issue === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_no_behaviour_issue_note || \"\",\n      ztp_violation: parsed.ztp_violation === \"Yes\"\n    }\n  ];\n\n  // Format kpi_results as an ARRAY of objects (expected by dashboard CallDetailView)\n  const kpiResultsArray = [\n    {\n      kpi_id: 1,\n      name: \"Call Resolution\",\n      value: parsed.kpi1_call_resolution || \"No\",\n      score: kpi1Score,\n      note: parsed.kpi1_note || \"\"\n    },\n    {\n      kpi_id: 2,\n      name: \"First Call Resolution\",\n      value: parsed.kpi2_fcr || \"No\",\n      score: kpi2Score,\n      note: parsed.kpi2_note || \"\"\n    },\n    {\n      kpi_id: 3,\n      name: \"AHT Efficiency\",\n      value: parsed.kpi3_aht_efficiency || \"Inefficient\",\n      score: kpi3Score,\n      note: parsed.kpi3_note || \"\"\n    },\n    {\n      kpi_id: 4,\n      name: \"Call Abandonment\",\n      value: parsed.kpi4_call_abandonment || \"No\",\n      score: kpi4Score,\n      note: parsed.kpi4_note || \"\"\n    },\n    {\n      kpi_id: 5,\n      name: \"CSAT Indicator\",\n      value: parsed.kpi5_csat_indicator || \"Low\",\n      score: kpi5Score,\n      note: parsed.kpi5_note || \"\"\n    },\n    {\n      kpi_id: 6,\n      name: \"Call Quality Score\",\n      value: parsed.kpi6_call_quality_score || 3,\n      score: (parsed.kpi6_call_quality_score || 3) * 20,\n      note: parsed.kpi6_note || \"\"\n    },\n    {\n      kpi_id: 7,\n      name: \"Hold Compliance\",\n      value: parsed.kpi7_hold_compliance || \"NA\",\n      score: parsed.kpi7_hold_compliance === 'Compliant' ? 100 : 0,\n      note: parsed.kpi7_note || \"\"\n    },\n    {\n      kpi_id: 8,\n      name: \"IVR Transfer\",\n      value: parsed.kpi8_transfer_to_ivr || \"NA\",\n      score: parsed.kpi8_transfer_to_ivr === 'Yes' ? 100 : 0,\n      note: parsed.kpi8_note || \"\"\n    },\n    {\n      kpi_id: 9,\n      name: \"Process Adherence\",\n      value: parsed.kpi9_process_adherence || \"None\",\n      score: parsed.kpi9_process_adherence === 'Full' ? 100 : parsed.kpi9_process_adherence === 'Partial' ? 60 : 0,\n      note: parsed.kpi9_note || \"\"\n    },\n    {\n      kpi_id: 10,\n      name: \"Escalation\",\n      value: parsed.kpi10_escalated || \"No\",\n      score: parsed.kpi10_escalated === 'No' ? 100 : 0,\n      note: parsed.kpi10_note || \"\"\n    },\n    {\n      kpi_id: 11,\n      name: \"Call Intent\",\n      value: callTopic, // Dynamic resolved topic\n      call_classification: callCategory, // Dynamic resolved classification\n      score: 100,\n      note: parsed.kpi11_intent_detail || \"\"\n    },\n    {\n      kpi_id: 12,\n      name: \"Service Level\",\n      value: parsed.kpi12_service_level || \"Requires Telephony Data\",\n      score: null,\n      note: \"Cannot determine from transcript.\"\n    },\n    {\n      kpi_id: 13,\n      name: \"Repeat Call\",\n      value: parsed.kpi13_repeat_call || \"Requires CRM Data\",\n      repeat_call_signal: parsed.repeat_call_signal === 'Yes',\n      score: null,\n      note: parsed.repeat_call_signal === 'Yes' ? \"Repeat call signal detected.\" : \"No repeat call signals found.\"\n    },\n    {\n      kpi_id: 14,\n      name: \"Query Raised\",\n      value: parsed.kpi14_query_raised || \"No\",\n      score: kpi14Score,\n      note: parsed.kpi14_note || \"\"\n    },\n    {\n      kpi_id: 15,\n      name: \"Customer & Agent Sentiment\",\n      customer_sentiment: parsed.kpi15_customer_sentiment || \"Neutral\",\n      agent_sentiment: parsed.kpi15_agent_sentiment || \"Professional\",\n      score: 100,\n      note: parsed.kpi15_sentiment_detail || \"\"\n    }\n  ];\n\n  const now = new Date().toISOString();\n  const callId = 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);\n\n  // Parse duration to MM:SS format\n  const mm = Math.floor(durationSec / 60);\n  const ss = Math.round(durationSec % 60);\n  const durationStr = codeTool.duration_mmss || `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;\n\n  // Get correct audio URL\n  const audioUrl = fileDetails.publicUrl || fileDetails.public_url || fileDetails.audio_url || codeTool.audio_url || triggerBody['audio_url'] || trigger['audio_url'] || triggerBody['recording'] || trigger['recording'] || \"\";\n\n  // Dynamic Resolution of AI Coaching Note\n  const aiCoachingNote = parsed.coaching_summary_note || parsed.coaching_reason || \"\";\n\n  return {\n    status: \"completed\",\n    call_id: callId,\n    duration: durationStr,\n    language: parsed.language || \"Unknown\",\n    audio_url: audioUrl,\n    filename: filename, // returns clean filename without folder paths\n    call_date: callDate || now.split('T')[0],\n    kpi_score: kpiScore,\n    sentiment: parsed.kpi15_customer_sentiment || \"Neutral\",\n    sop_score: sopScore,\n    agent_code: agentCode,\n    agent_name: agentName,\n    churn_risk: parsed.churn_risk || \"None\",\n    created_at: now,\n    call_intent: callTopic, // Dynamic resolved topic\n    call_topic: callTopic, // Added at ROOT level for direct database mapping\n    call_sub_topic: callSubTopic, // Added at ROOT level for direct database mapping\n    kpi_results: JSON.stringify(kpiResultsArray),\n    sop_results: JSON.stringify(sopResultsArray),\n    call_summary: parsed.call_summary || \"\",\n    intelligence: JSON.stringify({\n      call_category: callCategory,\n      call_topic: callTopic,\n      call_sub_topic: callSubTopic,\n      customer_type: parsed.customer_type || \"Unknown\",\n      churn_risk: parsed.churn_risk || \"None\",\n      coaching_priority: parsed.coaching_priority || \"Green\",\n      coaching_summary_note: aiCoachingNote,\n      compliance_risk: parsed.compliance_risk || \"None\",\n      ztp_violation: parsed.ztp_violation || \"No\",\n      probing_quality: parsed.probing_quality || \"NA\",\n      empathy_score: parsed.empathy_score !== undefined ? parsed.empathy_score : 3,\n      customer_pain_point: parsed.customer_pain_point || \"\",\n      kpi11_secondary_intent: parsed.kpi11_secondary_intent || \"None\",\n      // Naye BFSI Fields in Intelligence\n      bfsi_false_guarantee_flag: parsed.bfsi_false_guarantee_flag || \"No\",\n      bfsi_risk_disclaimer_spoken: parsed.bfsi_risk_disclaimer_spoken || \"NA\",\n      bfsi_identity_verified: parsed.bfsi_identity_verified || \"Yes\",\n      bfsi_product_category: parsed.bfsi_product_category || callTopic,\n      bfsi_compliance_score: parsed.bfsi_compliance_score !== undefined ? parsed.bfsi_compliance_score : 100\n    }),\n    processed_at: now,\n    coaching_note: aiCoachingNote, // Auto-mapped AI Coaching Note\n    coaching_summary_note: aiCoachingNote,\n    mobile_number: mobileNumber,\n    quality_score: parsed.kpi6_call_quality_score || 3,\n    ztp_violation: parsed.ztp_violation || \"No\",\n    compliance_risk: parsed.compliance_risk || \"None\",\n    recommendations: parsed.recommended_actions || \"None\",\n    coaching_priority: parsed.coaching_priority || \"Green\",\n    improvement_areas: parsed.improvement_areas || \"None\",\n    cleaned_transcript: transcript,\n    call_classification: callCategory,\n    \n    // Additional Naya Fields (Mapped directly)\n    customer_type: parsed.customer_type || \"Unknown\",\n    empathy_score: parsed.empathy_score !== undefined ? parsed.empathy_score : 3,\n    probing_quality: parsed.probing_quality || \"NA\",\n    customer_pain_point: parsed.customer_pain_point || \"\",\n\n    // Naye BFSI Fields (Mapped directly at Root level)\n    bfsi_false_guarantee_flag: parsed.bfsi_false_guarantee_flag || \"No\",\n    bfsi_risk_disclaimer_spoken: parsed.bfsi_risk_disclaimer_spoken || \"NA\",\n    bfsi_identity_verified: parsed.bfsi_identity_verified || \"Yes\",\n    bfsi_product_category: parsed.bfsi_product_category || callTopic,\n    bfsi_compliance_score: parsed.bfsi_compliance_score !== undefined ? parsed.bfsi_compliance_score : 100\n  };\n};",
+                                "packageJson": "{}"
+                              },
+                              "errorHandlingOptions": {
+                                "retryOnFailure": {
+                                  "value": false
+                                },
+                                "continueOnFailure": {
+                                  "value": false
+                                }
+                              }
+                            },
+                            "nextAction": {
+                              "name": "step_26",
+                              "skip": false,
+                              "type": "PIECE",
+                              "valid": true,
+                              "displayName": "Write analysis to V2 (/api/inbound/calls)",
+                              "nextAction": {
+                                "name": "step_40",
+                                "skip": false,
+                                "type": "PIECE",
+                                "valid": true,
+                                "displayName": "Return response",
+                                "nextAction": null,
+                                "settings": {
+                                  "input": {
+                                    "fields": {
+                                      "body": {
+                                        "ok": true,
+                                        "call_row_id": "{{trigger['body']['call_row_id']}}",
+                                        "status": "processed"
+                                      },
+                                      "status": 200,
+                                      "headers": {}
+                                    },
+                                    "respond": "stop",
+                                    "responseType": "json"
+                                  },
+                                  "pieceName": "@puchoaistudio/tool-webhook",
+                                  "actionName": "return_response",
+                                  "sampleData": {},
+                                  "pieceVersion": "^2.0.4",
+                                  "propertySettings": {
+                                    "fields": {
+                                      "type": "MANUAL",
+                                      "schema": {
+                                        "body": {
+                                          "type": "JSON",
+                                          "required": true,
+                                          "displayName": "JSON Body"
+                                        },
+                                        "status": {
+                                          "type": "NUMBER",
+                                          "required": false,
+                                          "displayName": "Status",
+                                          "defaultValue": 200
+                                        },
+                                        "headers": {
+                                          "type": "OBJECT",
+                                          "required": false,
+                                          "displayName": "Headers"
+                                        }
+                                      }
+                                    },
+                                    "respond": {
+                                      "type": "MANUAL"
+                                    },
+                                    "responseType": {
+                                      "type": "MANUAL"
+                                    }
+                                  },
+                                  "errorHandlingOptions": {
+                                    "retryOnFailure": {
+                                      "value": false
+                                    },
+                                    "continueOnFailure": {
+                                      "value": false
+                                    }
+                                  }
+                                }
+                              },
+                              "settings": {
+                                "input": {
+                                  "method": "POST",
+                                  "url": "{{trigger['body']['app_url']}}/api/inbound/calls",
+                                  "headers": {
+                                    "Content-Type": "application/json",
+                                    "Authorization": "Bearer {{trigger['body']['inbound_token']}}",
+                                    "X-Flow": "CALL_PROCESSING"
+                                  },
+                                  "queryParams": {},
+                                  "authType": "NONE",
+                                  "body_type": "json",
+                                  "body": {
+                                    "data": {
+                                      "org_id": "{{trigger['body']['org_id']}}",
+                                      "call_row_id": "{{trigger['body']['call_row_id']}}",
+                                      "filename": "{{step_22['filename']}}",
+                                      "status": "processed",
+                                      "call_id": "{{step_22['call_id']}}",
+                                      "duration": "{{step_22['duration']}}",
+                                      "language": "{{step_22['language']}}",
+                                      "audio_url": "{{step_22['audio_url']}}",
+                                      "call_date": "{{step_22['call_date']}}",
+                                      "kpi_score": "{{step_22['kpi_score']}}",
+                                      "sentiment": "{{step_22['sentiment']}}",
+                                      "sop_score": "{{step_22['sop_score']}}",
+                                      "agent_code": "{{step_22['agent_code']}}",
+                                      "agent_name": "{{step_22['agent_name']}}",
+                                      "call_topic": "{{step_22['call_topic']}}",
+                                      "churn_risk": "{{step_22['churn_risk']}}",
+                                      "call_intent": "{{step_22['call_intent']}}",
+                                      "kpi_results": "{{step_22['kpi_results']}}",
+                                      "sop_results": "{{step_22['sop_results']}}",
+                                      "call_summary": "{{step_22['call_summary']}}",
+                                      "intelligence": "{{step_22['intelligence']}}",
+                                      "processed_at": "{{step_22['processed_at']}}",
+                                      "coaching_note": "{{step_22['intelligence']}}",
+                                      "mobile_number": "{{step_18['mobile_number']}}",
+                                      "quality_score": "{{step_22['quality_score']}}",
+                                      "ztp_violation": "{{step_22['ztp_violation']}}",
+                                      "call_sub_topic": "{{step_22['call_sub_topic']}}",
+                                      "compliance_risk": "{{step_22['compliance_risk']}}",
+                                      "recommendations": "{{step_22['recommendations']}}",
+                                      "coaching_priority": "{{step_22['coaching_priority']}}",
+                                      "improvement_areas": "{{step_22['improvement_areas']}}",
+                                      "cleaned_transcript": "{{step_17['data']['response']}}",
+                                      "call_classification": "{{step_22['call_classification']}}",
+                                      "bfsi_compliance_score": "{{step_22['bfsi_compliance_score']}}",
+                                      "bfsi_product_category": "{{step_22['bfsi_product_category']}}",
+                                      "coaching_summary_note": "{{step_22['coaching_summary_note']}}",
+                                      "bfsi_identity_verified": "{{step_22['bfsi_identity_verified']}}",
+                                      "bfsi_false_guarantee_flag": "{{step_22['bfsi_false_guarantee_flag']}}",
+                                      "bfsi_risk_disclaimer_spoken": "{{step_22['bfsi_risk_disclaimer_spoken']}}"
+                                    }
+                                  }
+                                },
+                                "pieceName": "@puchoaistudio/tool-http",
+                                "actionName": "send_request",
+                                "sampleData": {},
+                                "pieceVersion": "^2.0.0",
+                                "propertySettings": {
+                                  "method": {
+                                    "type": "MANUAL"
+                                  },
+                                  "url": {
+                                    "type": "MANUAL"
+                                  },
+                                  "headers": {
+                                    "type": "MANUAL",
+                                    "schema": {}
+                                  },
+                                  "queryParams": {
+                                    "type": "MANUAL",
+                                    "schema": {}
+                                  },
+                                  "authType": {
+                                    "type": "MANUAL"
+                                  },
+                                  "body_type": {
+                                    "type": "MANUAL"
+                                  },
+                                  "body": {
+                                    "type": "MANUAL",
+                                    "schema": {}
+                                  }
+                                },
+                                "errorHandlingOptions": {
+                                  "retryOnFailure": {
+                                    "value": true
+                                  },
+                                  "continueOnFailure": {
+                                    "value": false
+                                  }
+                                }
+                              }
+                            },
+                            "displayName": "Code Copy"
+                          },
+                          "displayName": "Ask LLM Copy"
+                        },
+                        {
+                          "name": "step_31",
+                          "skip": false,
+                          "type": "PIECE",
+                          "valid": true,
+                          "settings": {
+                            "input": {
+                              "unit": "minutes",
+                              "delayFor": "30"
+                            },
+                            "pieceName": "@puchoaistudio/tool-delay",
+                            "actionName": "delayFor",
+                            "sampleData": {},
+                            "pieceVersion": "2.0.0",
+                            "propertySettings": {
+                              "unit": {
+                                "type": "MANUAL"
+                              },
+                              "delayFor": {
+                                "type": "MANUAL"
+                              },
+                              "markdown": {
+                                "type": "MANUAL"
+                              }
+                            },
+                            "errorHandlingOptions": {
+                              "retryOnFailure": {
+                                "value": false
+                              },
+                              "continueOnFailure": {
+                                "value": false
+                              }
+                            }
+                          },
+                          "nextAction": {
+                            "name": "step_32",
+                            "skip": false,
+                            "type": "PIECE",
+                            "valid": true,
+                            "settings": {
+                              "input": {
+                                "model": "{\"modelValue\":\"pucho_normal_chat_pro\",\"providerName\":\"Pucho\"}",
+                                "query": "You are a senior QA analyst at Prudent Corporate Advisory Services, an Indian mutual fund and financial services company (Fundzbazar platform). Your role is to evaluate call center recordings and return structured quality assessments.\nEVALUATION PHILOSOPHY — internalize ALL of these before reading any transcript:\n- Be practical and context-aware. Judge intent and outcome, not textbook perfection.\n- Natural, conversational Indian agent behavior (code-switching, informal tone, filler words) is completely normal — never penalize it.\n- For AGENT-CONTROLLABLE fields (SOPs, agent behaviour/professionalism, process adherence, resolution effort): default to YES/Partial when there is reasonable evidence of effort. Reserve NO/None for clear, unambiguous absence.\n- For CUSTOMER-STATE & OUTCOME fields (kpi5_csat_indicator, empathy_score, churn_risk, kpi15 sentiment, systemic_issue_flag): do NOT default positive. Calibrate strictly and neutrally from transcript evidence — absence of clear positive signals means Neutral/Medium/Low, never an inflated score.\n- Ask yourself: \"Would this pass in a real Indian call center?\" — not \"Is this scripted perfectly?\"\n- STT transcripts are noisy. Sarvam STT garbles words due to background noise, accents, and codec artifacts. Judge the AGENT, not the transcript quality.\n- Evaluate MEANING and INTENT, never exact wording. A concept correctly communicated in broken English, Hindi, or any phonetically distorted form is still correctly communicated.\nRespond with valid raw JSON only. Do not wrap in markdown code blocks. No explanation. No extra text whatsoever.\nEvaluate this Prudent Corporate Advisory call. Return 15 KPIs + 7 SOPs + BFSI Compliance as JSON.\n### CONTEXT\nDirection: {{call_type}} | Campaign: {{campaign}}\nCall Duration: {{duration_context}}\nProducts: Mutual Funds, SIP, Liquiloan, eMandate, KYC, Stock Broking, Portfolio\nLanguages: Hindi/Gujarati/English/Mixed — code-switching is normal, never penalise. Classify by the language carrying the substantive meaning of the conversation. Natural borrowing of operational or universal words from another language is not code-switching. Use Mixed only when two languages are genuinely and meaningfully alternated throughout.\nSpeakers: Identify agent by content (greets, handles query). Speaker labels are unreliable.\n### STT RULES\nSarvam STT is noisy — before penalising any SOP or KPI:\n- Garbled or misspelled words are acoustic artifacts, not agent errors (\"gud mornig\" = \"Good morning\").\n- Garbled company name in opening = STT artifact, never flag.\n- Conversation reaching account/portfolio/SIP details = identity established through context.\n- Background or third-party audio = ignore entirely. Never infer risk or ZTP from noise.\n- STT noise tolerance covers transcription QUALITY — a phonetically distorted greeting (\"gud morneng\", \"good moring\", \"gud evning\") still passes SOP 1. It does NOT transform a structurally absent greeting into a passing one: a call-pickup acknowledgement (\"hello\", \"haan bolo\") has no greeting structure to distort, so STT tolerance is irrelevant to it.\n### VALIDITY TIERS — evaluate first, then proceed or stop\nTIER 0 NON-CONTACT: Only telecom automation (switched off / not reachable / voicemail). Zero human speech.\n→ all sop=NA, kpi1=No, kpi2=No, kpi3=Efficient, kpi4=No, kpi5=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=non-contact, tier=0\nTIER 1 DISCONNECT: Agent connected but line dropped before any customer query, concern, or actionable topic was raised. No meaningful exchange occurred.\n→ all sop=NA, kpi1=No, kpi3=Efficient, kpi4=No, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=1\nRule: Agent not at fault. Line drop = telecom event. No SOP degrade, no risk flag, no ZTP, coaching stays Green.\nTIER 2 HOLD-DROP: Caller disconnected while queued or on hold before the interaction could complete.\n→ GATE CHECK first: Did a meaningful customer interaction (query raised, issue discussed, topic exchanged) actually occur before the hold event?\n  - NO meaningful interaction before hold (e.g. \"Hello sir, one moment\", immediate queue transfer, hold music before any dialogue, \"please hold\" with no query): all sop=NA.\n  - YES meaningful interaction occurred before hold: evaluate sop_greeting + sop_caller_identified from pre-hold content only; all other sop=NA.\n→ kpi4=No (hold disconnect ≠ abandonment), kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=2\nRule: Customer leaving hold is their choice, not agent abandonment. No risk or ZTP flags regardless of hold duration.\nTIER 3 NOISE: Third-party or background audio dominates. No clear agent-customer exchange.\n→ all sop=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=3\nRule: Third-party audio cannot be attributed to the agent. Never set risk or ZTP from background voices — even if the noise resembles a ZTP event.\nTIER 4 NON-EVALUABLE: Blank transcript, or content consists only of greetings/filler with no customer query or topic raised, or language is unrecognised.\n→ all sop=NA, kpi6=3, kpi9=NA, coaching=Green, risk=None, ztp=No, classification=invalid, tier=4\nTIER 5 VALID: Meaningful agent-customer exchange present. Proceed with full evaluation.\n### CALL TERMINATION ATTRIBUTION\nDetermines whether agent had a realistic opportunity window — used by SOP 5 and SOP 6 only.\nNA (customer-driven, agent had no window): customer exits mid-resolution, uses frustrated or dismissive language before a natural closing point, or call ends during transfer/trade/escalation/hold with no return.\nNo (agent-opportunity existed): call resolved calmly, customer acknowledged outcome and was waiting — agent had a clear window and skipped closure.\nRule: a frustrated \"bye\" mid-conversation = customer termination = NA. A calm \"okay bye\" after full resolution = agent opportunity = evaluate normally.\n### SOPs (7 Rules)\nSOP 1 Greeting | Standard for {{campaign}}: {{greeting_standard}}\nYES: Agent's opening contains recognisable structural greeting intent — any combination of (a) warm/time-based salutation in any form, (b) self-identification by name, (c) brand/company reference, or (d) service offer/willingness indicator. Elements may be partial, STT-garbled, code-mixed, or Hinglish — full noise tolerance applies within a genuine greeting attempt.\nNO: Opening is ONLY a call-pickup acknowledgement — single/repeated word or pure reactive phrase with zero structural elements.\nSOP 1 override — do NOT default to YES here: YES requires positive evidence of structure. STT tolerance covers distortion within a real greeting; it does NOT apply to bare pickup acknowledgements. \"gud morneng [name] Prudent se\" = YES. \"hello\" alone = NO. Garbled name/company = STT artifact, never an error.\nSOP 2 Caller Identified | Inbound: YES if identity established by any means — explicit (PAN/mobile/client ID asked) OR implicit (caller addressed by name, or account/portfolio/SIP details discussed). Context-based identity is valid. DealerDesk/Partner lines = system-verified at connect, mark YES automatically. Outbound: YES if agent confirms speaking to right person (\"Am I speaking with [Name]?\").\nSOP 3 Hold Permission | Agent asks before putting on hold if check likely >1 min. NA = no hold.\nSOP 4 Hold Refresh | Agent updates customer if hold >1 min. NA = hold <1 min or no hold.\nSOP 5 Closing | Agent asks \"anything else?\" before ending. Accept any natural equivalent. NA = closing phase unreachable (line drop, customer-driven termination). No = agent had a clear opportunity and skipped it.\nSOP 6 Feedback IVR | Agent offers IVR transfer. NA = SOP 5 is NA, or customer ended call before closing phase. No = agent had a post-resolution opportunity and skipped it.\nSOP 7 Behaviour | Professional throughout — no rudeness, no deliberate disconnect.\n### KPIs (15 Rules)\nKPI 1 Resolution: Fully resolved? Yes|No|Partial|NA\nKPI 2 FCR: Resolved without follow-up or escalation? Yes|No|Unknown|NA\nKPI 3 AHT: Efficient = within the {{aht_target_min}}-min target. Acceptable = slightly over but justified. Inefficient = excessive filler or repetition.\nKPI 4 Abandonment: Agent DELIBERATELY ended the call to avoid a query? Line drops and hold disconnects = No. Only flag with clear intentional evidence.\nKPI 5 CSAT: Estimate from tone, language, and outcome. High|Medium|Low|NA\nKPI 6 Quality 1-5: NA SOPs never count as gaps — only evaluate SOPs that were actually applicable.\n  5 = applicable SOPs followed + query fully resolved + professional throughout.\n  4 = query resolved + agent handled well with at most 1 minor real SOP gap. Default for competent, well-handled calls.\n  3 = query resolved or reasonably attempted, but 1-2 genuine agent-side SOP gaps exist.\n  2 = multiple real agent-side failures, or partial resolution due to agent error or knowledge gap. Partial resolution caused by system/backend issues beyond agent control does not drop score to 2.\n  1 = rude or deliberate abandonment. Never assign 1-2 without specific evidence of agent failure.\nKPI 7 Hold Compliance: Hold permission + refresh correct? Compliant|Non-Compliant|NA\nKPI 8 IVR Transfer: Transferred to feedback IVR? Yes|No|Customer Refused|NA\nKPI 9 Process Adherence: Full=all steps. Partial=1-2 missing but query handled. None=no structure.\nKPI 10 Escalation: Escalated to senior or another department? Yes|No|NA\nKPI 11 Intent: Use EXACTLY one label from the taxonomy below. Copy character-for-character. Do not paraphrase, abbreviate, or invent labels.\n  Inbound: Complaint|Query|SIP Start|SIP Stop|SIP Modify|Redemption|Purchase|KYC Initiation|KYC Update|eMandate Setup|eMandate Issue|Login/OTP Issue|ARN Transfer|Portfolio Review|Liquiloan Query|Stock Broking Query|Account Management|General Information|Callback Request\n  Outbound: SIP Review|Mandate Follow-up|Missed Payment|ARN Renewal|KYC Completion|Lapsed SIP|Campaign Outreach|Virtual RM Advisory|Lead Follow-up|Upsell/Cross-sell\nkpi11_intent_detail: A precise, detailed one-sentence explanation of what the customer needed or did, specifically focusing on the core request and context. For example: \"Bank account registration query - client wants bank account registered details\" or \"Mutual fund redemption deduction delay inquiry due to bank holiday processing\".\nkpi11_sub_category: A detailed sub-category classification representing the exact query/action, such as \"Bank account registration status check\", \"SIP stop request via mobile app\", or \"eMandate deactivation check\".\nKPI 12 Service Level: \"Requires Telephony Data\"\nKPI 13 Repeat Call: \"Requires CRM Data\"\nKPI 14 Query Raised: Support ticket raised during or after this call? Yes|No|NA\nKPI 15 Sentiment: Tone of both customer and agent.\n### THREE-WAY CLASSIFICATION — read the full conversation arc before deciding. Ask three questions in sequence:\n  [Q1] INTENT: Is the customer primarily requesting an action/service, seeking information or guidance, seeking explanation or resolution, or expressing sustained dissatisfaction?\n  [Q2] EMOTIONAL ARC: Does the customer's frustration — if any — resolve or reduce by call end, or persist and escalate?\n  [Q3] OUTCOME: Does the call close with the need met, accepted as in-progress, or unresolved with the customer still emotionally charged?\n\"intent\" (Inquiry) — customer is requesting an action, seeking general information, or checking account/service status. Tone neutral to polite. No failed prior commitment. The need is handled, in-progress, or acknowledged.\n  Signal: customer calls TO DO something (stop SIP, activate account, submit KYC, set up mandate, initiate redemption) OR TO KNOW something (product charges, process steps, eligibility, LAS/Fundzbazar/account status, general guidance, product understanding). Urgency is fine; frustration is not the dominant note.\n  Hard boundary: if a previously placed request has specifically failed or was due but not executed, the follow-up is a complaint. A status check on a normally in-progress request is still intent.\n\"query\" — customer has an active account-specific problem, service failure, or process blockage. Agent provides explanation, timeline, or corrective guidance. Frustration may exist but does not escalate to call end. Call closes with the concern addressed or a clear next step established, even if the issue is not yet fully resolved.\n  Signal: customer calls because something is wrong or stuck — SIP rejection, mandate failure, redemption not credited, login/OTP issue, status not updating, TAT exceeded, payment not processed. An issue exists but the conversation arc bends toward resolution or acknowledged next steps.\n  Hard boundary: frustration that actively escalates toward call end = complaint. Flat or resigned-neutral tone at call end (\"theek hai dekh lete hain\", \"okay I'll wait\") = query. A customer who ends neutral-but-not-delighted is a query, not a complaint.\n\"complaint\" — sustained dissatisfaction that persists to call end. One or more must be true: a prior commitment or request has failed; this is a repeat contact for the same unresolved issue; trust is visibly damaged; the agent's response does not satisfy the customer; the call ends with the issue still open and the customer still frustrated.\n  Key rule: a delay alone ≠ complaint. Concern alone ≠ complaint. Frustration that resolves during the call ≠ complaint. Only sustained, unresolved dissatisfaction at call end = complaint.\n  Complaint signals (each one raises the probability, but MUST be assessed against the full arc):\n    — Negative outcome: service outcome did not match expectation (funds not credited, SIP not stopped despite prior request, mandate failed)\n    — Failed commitment: previous promise or timeline was not honoured\n    — Repeat contact: \"pehle bhi bola tha\", \"last time I called\", \"already complained\"\n    — Sustained frustration: same complaint repeated, request for senior/manager, tone escalates rather than calms\nkpi11_intent must tell the same story as call_classification:\n  • kpi11_intent = \"Complaint\" → call_classification = \"complaint\"\n  • kpi11_intent = \"General Information\" / \"Callback Request\" / any transactional or informational label + no active problem + no sustained dissatisfaction → call_classification = \"intent\"\n  • kpi11_intent = \"Query\" / any problem-state, service-failure, or pending-issue label + concern addressed or next step given by call end → call_classification = \"query\"\n  • Any label where complaint signals dominate the conversation arc → call_classification = \"complaint\"; use call_topic for the subject domain\n  • Non-contact / pre-filter invalid → \"non-contact\" or \"invalid\"\n### CLASSIFICATION\ncall_topic: KYC|SIP|Redemption|Mandate|eMandate|Login/OTP|ARN|Portfolio|Liquiloan|Stock Broking|Account Management|General Inquiry|Complaint|Other Products|Other|SIP Review|Mandate Follow-up|Missed Payment|ARN Renewal|KYC Completion|Lapsed SIP|Campaign Outreach|Virtual RM Advisory|Lead Follow-up|Upsell/Cross-sell\n  Note: call_topic captures the subject domain regardless of classification. A complaint about SIP → call_topic=SIP. Use call_topic=Complaint only when no specific subject domain is identifiable.\n  Other Products = topic is outside this campaign's core scope but within the identifiable financial domain (use this when any product context is detectable).\n  Other = topic cannot be identified at all. Prefer Other Products over Other whenever any subject is detectable.\ncall_sub_topic: A detailed, context-aware business issue description.\n  Format: Title Case or Normal Case. Use a clear separator \" — \" to join the core topic with the specific issue, context, error message, platform (e.g. app, website, WhatsApp), or blocker (e.g. blackout window, signature mismatch, folio details).\n  Good examples of sub-topics from Prudent Corporate Advisory Services:\n  - \"SIP stop request via app — deferred due to 7-day installment blackout window\"\n  - \"Physical mandate bank registration — cooperative bank name order mismatch — urgent activation request\"\n  - \"OTP not received on mobile during SIP/mandate registration — folio contact detail mismatch\"\n  - \"Change of mobile number — form rejected (number linked to another PAN)\"\n  - \"Physical redemption rejected — signature mismatch (Nippon India ELSS)\"\n  - \"SIP bounce — prior intimation email not received — email delivery log requested by partner\"\n  - \"Bank Account Change — rejected due to signature mismatch, static report discrepancy\"\n  - \"eMandate rejection and UPI mandate deactivation status check\"\n  - \"Missed call inquiry — customer wants to know reason for missed call from company number\"\n  - \"Availability of Fundzbazar account opening process video tutorial\"\n  - \"LAS shortfall repayment and outstanding interest payment process\"\n### CALL TOPIC BOUNDARY — apply BEFORE finalising call_topic and kpi11_intent\nThis call arrived on the {{campaign}} campaign line. The expected product scope for {{campaign}} is: {{core_topics}}.\nBefore assigning call_topic, ask yourself in this order:\n  1. Is the call clearly and primarily about one of the core topics listed above for {{campaign}}? → use that topic.\n  2. Is it clearly about a different campaign's well-defined topic (e.g. \"Stock Broking\" for equity trading, \"Liquiloan\" for a loan product) that happened to come in on this line? → use that specific topic.\n  3. Is the call about something outside both lists — any financial product, service, or query not clearly covered by the standard campaign taxonomy? → call_topic=Other Products, call_sub_topic=the specific product or service the customer is discussing.\n\"Other Products\" is the principled default for any call that concerns a product, service, or topic outside the campaign's core scope. This includes any product you have not seen in the taxonomy before. Do NOT force-map an unrecognised topic to the closest-sounding existing topic — that is the incorrect fallback this rule is designed to prevent.\nkpi11_intent for Other Products calls: use generic taxonomy labels (Query, General Information, Complaint, Callback Request). Do not use product-specific intents from a different campaign line unless the call is explicitly and unmistakably about that product.\nkyc_question_type (only if KYC): why_kyc|about_process|document_submission|verification|null\npartner_sentiment_rating: Sentiment of the channel distributor/partner caller. NA when the caller is a retail investor rather than a distributor/partner.\nrepeat_call_signal: Judge by reasoning, not just fixed phrases.\n  Yes = explicit OR strongly-implied prior contact for the same issue. Explicit phrases (\"pehle bhi bola tha\", \"last time I called\", \"already raised this\", \"already complained\", \"second/third time calling\"), OR an implied prior-contact state such as a prolonged unresolved duration or an already-escalated issue (e.g. \"15 din se try kar rahi hoon\", \"already escalated to CAMPS\", \"still not resolved since last week\").\n  No = the interaction is clearly a first-time contact for this issue.\n  Unknown = no signal either way (cannot tell if first-time or repeat).\n  Must stay consistent with the complaint repeat-contact flag — if repeat contact is a complaint signal here, repeat_call_signal = Yes.\n### ORGANISATION RULES — from this organisation's Company Profile (its uploaded SOPs, policies, KPIs and intents). When this section is not empty it takes precedence over the brand names, SOP wording, intent labels and BFSI rules above: score the SOPs listed here (in order) and pick KPI 11 from this taxonomy.\n{{step_18['company_rules_text']}}\n\n### TRANSCRIPT\n{{step_17['data']['response']}}{{step_18}}\n### BFSI REGULATORY & COMPLIANCE RULES (SEBI / RBI / IRDAI)\n1. GUARANTEED RETURNS MISSELLING CHECK (ZTP Event):\n   Agent MUST NOT promise fixed or guaranteed returns on market-linked financial products (Mutual Funds, Equity, SIP). Promising fixed returns (e.g. \"20% return guaranteed\") = MANDATORY ZTP VIOLATION! Flag bfsi_false_guarantee_flag = \"Yes\", ztp_violation = \"Yes\", compliance_risk = \"High\", coaching_priority = \"Red\".\n2. MANDATORY INVESTMENT RISK DISCLAIMER:\n   When recommending or advising on mutual fund schemes, agent SHOULD mention: \"Mutual fund investments are subject to market risks, read all scheme related documents carefully.\" If skipped during active scheme recommendation, set bfsi_risk_disclaimer_spoken = \"No\", compliance_risk = \"Medium\".\n3. FINANCIAL IDENTITY & PII PRIVACY:\n   Agent MUST verify 2+ identity details (PAN / DOB / Client ID / Mobile) BEFORE disclosing sensitive account info (Folio balance, Bank Account Details, NAV holdings). Disclosing financial data without identity verification = bfsi_identity_verified = \"No\", compliance_risk = \"Medium\".\n4. 7-DAY SIP BLACKOUT ADVISORY:\n   For SIP stop or modification queries, agent MUST accurately state that requests placed within 7 business days of the installment date will apply from the NEXT month's cycle.\n5. EMANDATE & BANK REGISTRATION ADVISORY:\n   Agent MUST accurately explain bank rejection reasons (Signature Mismatch, Name Order Discrepancy, Unsupported Cooperative Bank, OTP Expiry) and provide exact resolution steps.\n6. REDEMPTION & NAV CUTOFF ACCURACY:\n   Agent MUST accurately state 3:00 PM NAV cutoff timing and correct payout TATs (Liquid Funds = T+1 day, Equity Funds = T+2 days).\n### COACHING AND COMPLIANCE\nimprovement_areas: Genuine behavioural gaps with clear evidence only. Write exclusively in clear English. Never flag: greeting phonetics, company name STT garbling, language or accent, caller ID when context progressed.\nFlag only: hold without permission, no hold refresh, unresolved query without follow-up, wrong information given, zero closing, genuine rudeness.\nHallucination guard: Never infer or flag improvement areas based on STT noise, garbled words, silence, interrupted sentences, one-sided audio, incomplete transcripts, or any call where context is insufficient to clearly and unambiguously attribute a behaviour to the agent. If the evidence is unclear or the call is non-evaluable, set improvement_areas to None.\nNA guard: Never generate an improvement area for any SOP field marked NA — NA means the scenario was outside the agent's control, not a behavioural gap. This includes SOP 5 and SOP 6 when NA due to customer-driven termination.\nrecommended_actions: For every improvement area identified above, provide a specific, practical, and immediately implementable corrective action written strictly in English. Write one recommendation per gap, in the same order. Each recommendation must be concrete — state what the agent should say, do, or change in English (for example: \"After resolving the main query, always ask 'Is there anything else I can assist you with?' before ending the call. Also, offer to transfer to feedback IVR by asking 'Would you like to provide feedback on our service?'\"). Recommendations should feel operationally usable the very next day. If improvement_areas is None, set this field to None as well.\nZTP violations — evaluate against this principle: any agent behaviour that directly harms the customer financially, exposes the customer or company to legal/regulatory risk, or represents a deliberate ethical breach with clear intent. The five scenarios below are definitive ZTP events; any behaviour that unambiguously satisfies the principle also qualifies even if not literally listed:\n1. Incorrect or misleading investment advice (wrong returns, false guarantees, misselling)\n2. Sharing customer PAN/mobile/balance with a third party\n3. Abusive, threatening, or discriminatory language\n4. Deliberately ending the call to avoid a query\n5. Soliciting money outside the official platform\nHard guards: background audio and third-party voices are never ZTP. STT noise or garbled speech is never sufficient basis for a ZTP flag — only unambiguous, clearly attributable agent speech qualifies.\ncompliance_risk — evaluate actual risk trajectory, not just category label. Ask: does this agent behaviour create real potential for financial harm, regulatory exposure, or serious customer trust violation?\nHigh = ZTP event, or clear misinformation with direct financial impact on the customer.\nMedium = Unverified promise about returns/timelines, or skipped mandatory regulatory step that could cause harm if uncorrected.\nLow = Process gap only — no customer harm possible (IVR skipped, closing skipped, formal ID not done but context clear).\nNone = No risk to customer, company, or regulatory standing.\nNever High or Medium for: informal tone, Hinglish, missing SOPs, non-verification with context, or noise.\nNON-VERIFICATION RULE: Missing formal caller ID = at most Low, and only when zero identification of any kind. Never Medium, never High.\nConsistency rule: ztp_violation=Yes forces compliance_risk=High — these fields must never contradict each other.\ncoaching_priority:\nRed = ZTP or High risk or genuine rudeness or 3+ real SOP failures.\nAmber = 1-2 SOP gaps or AHT significantly over or partial resolution.\nGreen = minor or no gaps, query resolved. Default to Green or Amber. Reserve Red for serious issues only.\ncoaching_summary_note: A clear, actionable 2-4 sentence coaching note written specifically for the agent strictly in English. Synthesize improvement_areas, recommended_actions, and coaching_reason into a direct, friendly, and practical coaching note as a Team Leader or QA Manager would write in a 1-on-1 coaching session. State (1) what went well, (2) exact mistake/gap if any, and (3) what the agent should say/do next time in English (for example: \"Next time, always ask 'Do you have any other questions?' before ending and offer feedback IVR transfer.\"). If zero gaps (coaching_priority = Green and improvement_areas = None), set coaching_summary_note to: \"Query resolved effectively with zero SOP or compliance gaps. Maintain this standard.\"\nsystemic_issue_flag: Yes if the issue described appears to be a recurring process failure or platform-wide problem likely affecting multiple customers. No for isolated individual incidents.\n### OUTPUT JSON\n{\n  \"language\": \"Hindi|Gujarati|English|Mixed|Unknown\",\n  \"agent_speaker_num\": 1,\n  \"call_validity_tier\": \"0|1|2|3|4|5\",\n  \"sop_greeting\": \"Yes|No|NA\",\n  \"sop_caller_identified\": \"Yes|No|NA\",\n  \"sop_hold_permission\": \"Yes|No|NA\",\n  \"sop_hold_refresh\": \"Yes|No|NA\",\n  \"sop_closing_script\": \"Yes|No|NA\",\n  \"sop_feedback_ivr\": \"Yes|No|NA\",\n  \"sop_no_behaviour_issue\": \"Yes|No|NA\",\n  \"kpi1_call_resolution\": \"Yes|No|Partial|NA\",\n  \"kpi1_note\": \"brief reason\",\n  \"kpi2_fcr\": \"Yes|No|Unknown|NA\",\n  \"kpi2_note\": \"brief reason\",\n  \"kpi3_aht_efficiency\": \"Efficient|Acceptable|Inefficient|NA\",\n  \"kpi3_note\": \"brief reason\",\n  \"kpi4_call_abandonment\": \"Yes|No|NA\",\n  \"kpi4_note\": \"brief reason\",\n  \"kpi5_csat_indicator\": \"High|Medium|Low|NA\",\n  \"kpi5_note\": \"brief reason\",\n  \"kpi6_call_quality_score\": 3,\n  \"kpi6_note\": \"brief reason\",\n  \"kpi7_hold_compliance\": \"Compliant|Non-Compliant|NA\",\n  \"kpi7_note\": \"brief reason\",\n  \"kpi8_transfer_to_ivr\": \"Yes|No|Customer Refused|NA\",\n  \"kpi9_process_adherence\": \"Full|Partial|None|NA\",\n  \"kpi9_note\": \"brief reason\",\n  \"kpi10_escalated\": \"Yes|No|NA\",\n  \"kpi10_note\": \"brief reason\",\n  \"kpi11_intent\": \"exact label from taxonomy\",\n  \"kpi11_intent_detail\": \"detailed explanation\",\n  \"kpi11_sub_category\": \"sub-category\",\n  \"kpi11_secondary_intent\": \"secondary intent from same taxonomy if call clearly has a dominant second purpose, or None if single-purpose\",\n  \"kpi12_service_level\": \"Requires Telephony Data\",\n  \"kpi13_repeat_call\": \"Requires CRM Data\",\n  \"kpi14_query_raised\": \"Yes|No|NA\",\n  \"kpi14_note\": \"brief reason\",\n  \"kpi15_customer_sentiment\": \"Positive|Neutral|Negative|NA\",\n  \"kpi15_agent_sentiment\": \"Professional|Neutral|Unprofessional|NA\",\n  \"kpi15_sentiment_detail\": \"brief reason\",\n  \"call_summary\": \"2-3 sentence factual summary\",\n  \"improvement_areas\": \"specific actionable coaching points in English, or None\",\n  \"recommended_actions\": \"specific practical corrective action in English, or None\",\n  \"compliance_risk\": \"High|Medium|Low|None\",\n  \"compliance_risk_detail\": \"detail or None\",\n  \"ztp_violation\": \"Yes|No\",\n  \"ztp_detail\": \"detail or None\",\n  \"coaching_priority\": \"Red|Amber|Green\",\n  \"coaching_reason\": \"reason\",\n  \"coaching_summary_note\": \"complete 2-4 sentence actionable AI coaching note for the agent written strictly in English\",\n  \"bfsi_false_guarantee_flag\": \"Yes|No\",\n  \"bfsi_risk_disclaimer_spoken\": \"Yes|No|NA\",\n  \"bfsi_identity_verified\": \"Yes|No|NA\",\n  \"bfsi_product_category\": \"Mutual Funds|SIP|eMandate|KYC|Liquiloan|Stock Broking|Portfolio|Other\",\n  \"bfsi_compliance_score\": 100,\n  \"agent_knowledge_gap\": \"Yes|No|NA\",\n  \"agent_knowledge_gap_detail\": null,\n  \"probing_quality\": \"Good|Average|Poor|NA\",\n  \"probing_note\": \"brief reason\",\n  \"empathy_score\": 3,\n  \"empathy_note\": \"brief reason\",\n  \"customer_type\": \"Investor|Partner|Internal|Unknown\",\n  \"nri_indicator\": \"Yes|No|Unknown\",\n  \"call_complexity\": \"Simple|Moderate|Complex|NA\",\n  \"customer_pain_point\": \"description or None\",\n  \"churn_risk\": \"High|Medium|Low|None\",\n  \"churn_risk_detail\": \"detail or None\",\n  \"missed_opportunity\": \"Yes|No|NA\",\n  \"missed_opportunity_detail\": \"detail or None\",\n  \"systemic_issue_flag\": \"Yes|No\",\n  \"systemic_issue_detail\": \"detail or None\",\n  \"repeat_call_signal\": \"Yes|No|Unknown\",\n  \"call_classification\": \"intent|query|complaint\",\n  \"call_topic\": \"KYC|SIP|Redemption|Mandate|eMandate|Login/OTP|ARN|Portfolio|Liquiloan|Stock Broking|Account Management|General Inquiry|Complaint|Other Products|Other|SIP Review|Mandate Follow-up|Missed Payment|ARN Renewal|KYC Completion|Lapsed SIP|Campaign Outreach|Virtual RM Advisory|Lead Follow-up|Upsell/Cross-sell\",\n  \"call_sub_topic\": \"specific sub-topic string\",\n  \"kyc_question_type\": \"why_kyc|about_process|document_submission|verification|null\",\n  \"partner_sentiment_rating\": \"Positive|Neutral|Negative|NA\"\n}",
+                                "maxTokens": "10000",
+                                "temperature": 0.7,
+                                "puchoModelKey": "pucho_normal_chat_pro",
+                                "puchoProviderName": "Pucho"
+                              },
+                              "pieceName": "@puchoaistudio/tool-llm-ai",
+                              "actionName": "askLlm",
+                              "sampleData": {},
+                              "pieceVersion": "2.3.3",
+                              "propertySettings": {
+                                "model": {
+                                  "type": "MANUAL"
+                                },
+                                "query": {
+                                  "type": "MANUAL"
+                                },
+                                "maxTokens": {
+                                  "type": "DYNAMIC"
+                                },
+                                "temperature": {
+                                  "type": "MANUAL"
+                                },
+                                "maxTokensNote": {
+                                  "type": "MANUAL"
+                                },
+                                "puchoModelKey": {
+                                  "type": "MANUAL"
+                                },
+                                "puchoProviderName": {
+                                  "type": "MANUAL"
+                                }
+                              },
+                              "errorHandlingOptions": {
+                                "retryOnFailure": {
+                                  "value": false
+                                },
+                                "continueOnFailure": {
+                                  "value": false
+                                }
+                              }
+                            },
+                            "nextAction": {
+                              "name": "step_33",
+                              "skip": false,
+                              "type": "CODE",
+                              "valid": true,
+                              "settings": {
+                                "input": {
+                                  "ask_llm": "{{step_32['data']['response']}}",
+                                  "trigger": "{{trigger['body']}}",
+                                  "code_tool": "{{step_18}}"
+                                },
+                                "sampleData": {},
+                                "sourceCode": {
+                                  "code": "// @ts-nocheck\n/**\n * PuchoAI Main Processor Code Step (Consolidated Post-Analysis Parser - Mapped to code_tool & file_details)\n * \n * Inputs:\n * - ask_llm: Output from the Ask LLM (Analysis) step.\n * - code_tool: Output from the first Code step (Unified Code Tool / Filename parser).\n * - file_details: Mapped to the current loop item (5. Loop on Items -> item)\n * - trigger: The raw trigger webhook data.\n * - transcript: The corrected transcript from the Transcript Correction step.\n * - duration_sec: Mapped call duration in seconds.\n */\n\nexport const code = async (inputs) => {\n  // Helper to recursively parse and clean/unwrap nested or stringified JSON values\n  const cleanInputObj = (val) => {\n    if (!val) return {};\n    let target = val;\n    \n    // Parse if it's a string\n    if (typeof target === 'string') {\n      try {\n        target = JSON.parse(target);\n      } catch (e) {\n        try {\n          const m = target.match(/\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\]/);\n          if (m) {\n            target = JSON.parse(m[0]);\n          } else {\n            return {};\n          }\n        } catch (err) {\n          return {};\n        }\n      }\n    }\n    \n    // Recursively unwrap common nested properties\n    let lastTarget = null;\n    while (target && typeof target === 'object' && target !== lastTarget) {\n      lastTarget = target;\n      if (target.data !== undefined) {\n        target = target.data;\n      } else if (target.response !== undefined) {\n        target = target.response;\n      } else if (target.body !== undefined) {\n        target = target.body;\n      } else {\n        break;\n      }\n      \n      // If the unwrapped target is stringified, parse it\n      if (typeof target === 'string') {\n        try {\n          target = JSON.parse(target);\n        } catch (e) {\n          try {\n            const m = target.match(/\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\]/);\n            if (m) {\n              target = JSON.parse(m[0]);\n            } else {\n              break;\n            }\n          } catch (err) {\n            break;\n          }\n        }\n      }\n    }\n    return (typeof target === 'object' && target !== null) ? target : {};\n  };\n\n  // 1. Safe parsing for inputs\n  const codeTool = cleanInputObj(inputs.code_tool);\n  const fileDetails = cleanInputObj(inputs.file_details);\n  const trigger = cleanInputObj(inputs.trigger);\n  const triggerBody = trigger['body'] || trigger || {};\n\n  const durationSec = fileDetails.duration_seconds || codeTool.duration_seconds || parseFloat(inputs.duration_sec) || parseFloat(triggerBody['duration']) || parseFloat(trigger['duration']) || 0;\n  const transcript = fileDetails.transcript || codeTool.transcript || inputs.transcript || \"\";\n\n  // 2. Resolve metadata from loop item (file_details) or fallbacks\n  let rawFilename = fileDetails.fileName || fileDetails.filename || codeTool.filename || inputs.filename || triggerBody['filename'] || trigger['filename'] || \"\";\n  \n  // Clean folder path from filename (e.g. \"Calls_recording/name.mp3\" -> \"name.mp3\")\n  let filename = rawFilename;\n  if (filename && filename.includes('/')) {\n    filename = filename.split('/').pop();\n  }\n\n  let agentCode = fileDetails.agent_code || codeTool.agent_code || inputs.agent_code || triggerBody['agent_code'] || trigger['agent_code'] || \"\";\n  let agentName = fileDetails.agent_name || codeTool.agent_name || inputs.agent_name || triggerBody['agent_name'] || trigger['agent_name'] || \"\";\n  let mobileNumber = fileDetails.mobile_number || codeTool.mobile_number || inputs.mobile_number || triggerBody['mobile_number'] || trigger['mobile_number'] || \"\";\n  let callDate = fileDetails.call_date || codeTool.call_date || inputs.call_date || triggerBody['call_date'] || trigger['call_date'] || \"\";\n  let campaign = fileDetails.campaign || codeTool.campaign || inputs.campaign || triggerBody['campaign'] || trigger['campaign'] || \"NONPLC\";\n\n  // Segment filename parsing if filename is present but codes are missing\n  if (filename && (!agentCode || !mobileNumber)) {\n    const match = filename.match(/^(\\d{8})-(\\d+)_(\\d+)_([^_]+)_([^-._]+)/);\n    if (match) {\n      const rawDate = match[1];\n      if (!callDate) {\n        callDate = `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`;\n      }\n      if (!mobileNumber) {\n        mobileNumber = match[3];\n      }\n      if (!agentCode) {\n        agentCode = match[4];\n      }\n      const parsedCampaign = match[5].toUpperCase();\n      if (parsedCampaign) {\n        campaign = parsedCampaign;\n      }\n    }\n  }\n\n  // Live query from Supabase to match the code with the name registered via Add User\n  if (agentCode && (!agentName || agentName.toLowerCase().startsWith('agent '))) {\n    const supabaseUrl = '';\n    const supabaseAnonKey = '';\n\n    try {\n      const dbResponse = await fetch(`${supabaseUrl}/rest/v1/agents?agent_code=eq.${agentCode}&select=agent_name`, {\n        headers: {\n          'apikey': supabaseAnonKey,\n          'Authorization': `Bearer ${supabaseAnonKey}`\n        }\n      });\n      if (dbResponse.ok) {\n        const dbData = await dbResponse.json();\n        if (dbData && dbData.length > 0) {\n          agentName = dbData[0].agent_name;\n        }\n      }\n    } catch(e) {\n      // Revert to fallback dynamically\n    }\n\n    if (!agentName) {\n      agentName = `Agent ${agentCode}`;\n    }\n  }\n\n  // 4. Safe parsing for LLM output\n  const parsed = cleanInputObj(inputs.ask_llm || inputs.llm_output);\n\n  // ─── DYNAMIC TOPIC & SUB-TOPIC RESOLUTION FROM LLM RESPONSE ───\n  const callTopic = parsed.call_topic || parsed.kpi11_intent || parsed.call_intent || \"Other\";\n  const callSubTopic = parsed.call_sub_topic || parsed.kpi11_sub_category || parsed.kpi11_intent_detail || \"\";\n  const callCategory = parsed.call_classification || parsed.call_category || \"query\";\n\n  // Compute SOP score: count \"Yes\" outcomes\n  const sopFields = ['sop_greeting', 'sop_caller_identified', 'sop_hold_permission', 'sop_hold_refresh', 'sop_closing_script', 'sop_feedback_ivr', 'sop_no_behaviour_issue'];\n  let sopScore = 0;\n  for (const f of sopFields) {\n    if (parsed[f] === 'Yes') sopScore++;\n  }\n\n  // Compute individual KPI Scores\n  const kpi1Score = parsed.kpi1_call_resolution === 'Yes' ? 100 : parsed.kpi1_call_resolution === 'Partial' ? 60 : parsed.kpi1_call_resolution === 'NA' ? 80 : 0;\n  const kpi2Score = parsed.kpi2_fcr === 'Yes' ? 100 : parsed.kpi2_fcr === 'Unknown' ? 60 : 0;\n  const kpi3Score = parsed.kpi3_aht_efficiency === 'Efficient' ? 100 : parsed.kpi3_aht_efficiency === 'Acceptable' ? 70 : 30;\n  const kpi4Score = parsed.kpi4_call_abandonment === 'No' ? 100 : 0;\n  const kpi5Score = parsed.kpi5_csat_indicator === 'High' ? 100 : parsed.kpi5_csat_indicator === 'Medium' ? 60 : 30;\n  const kpi14Score = parsed.kpi14_query_raised === 'Yes' ? 100 : parsed.kpi14_query_raised === 'NA' ? 80 : 50;\n  \n  // Calculate average KPI Score\n  const kpiScore = Math.round((kpi1Score + kpi2Score + kpi3Score + kpi4Score + kpi5Score + kpi14Score) / 6);\n\n  // Format sop_results as an ARRAY of objects (expected by dashboard compliance page)\n  const sopResultsArray = [\n    {\n      sop_id: 1,\n      name: \"Professional Greeting\",\n      result: parsed.sop_greeting === \"Yes\" ? \"Pass\" : parsed.sop_greeting === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_greeting_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 2,\n      name: \"Caller Identified\",\n      result: parsed.sop_caller_identified === \"Yes\" ? \"Pass\" : parsed.sop_caller_identified === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_caller_identified_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 3,\n      name: \"Hold Permission\",\n      result: parsed.sop_hold_permission === \"Yes\" ? \"Pass\" : parsed.sop_hold_permission === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_hold_permission_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 4,\n      name: \"Hold Refresh\",\n      result: parsed.sop_hold_refresh === \"Yes\" ? \"Pass\" : parsed.sop_hold_refresh === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_hold_refresh_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 5,\n      name: \"Closing Script\",\n      result: parsed.sop_closing_script === \"Yes\" ? \"Pass\" : parsed.sop_closing_script === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_closing_script_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 6,\n      name: \"Feedback IVR\",\n      result: parsed.sop_feedback_ivr === \"Yes\" ? \"Pass\" : parsed.sop_feedback_ivr === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_feedback_ivr_note || \"\",\n      ztp_violation: false\n    },\n    {\n      sop_id: 7,\n      name: \"No Behaviour Issue\",\n      result: parsed.sop_no_behaviour_issue === \"Yes\" ? \"Pass\" : parsed.sop_no_behaviour_issue === \"NA\" ? \"NA\" : \"Fail\",\n      confidence: 1,\n      note: parsed.sop_no_behaviour_issue_note || \"\",\n      ztp_violation: parsed.ztp_violation === \"Yes\"\n    }\n  ];\n\n  // Format kpi_results as an ARRAY of objects (expected by dashboard CallDetailView)\n  const kpiResultsArray = [\n    {\n      kpi_id: 1,\n      name: \"Call Resolution\",\n      value: parsed.kpi1_call_resolution || \"No\",\n      score: kpi1Score,\n      note: parsed.kpi1_note || \"\"\n    },\n    {\n      kpi_id: 2,\n      name: \"First Call Resolution\",\n      value: parsed.kpi2_fcr || \"No\",\n      score: kpi2Score,\n      note: parsed.kpi2_note || \"\"\n    },\n    {\n      kpi_id: 3,\n      name: \"AHT Efficiency\",\n      value: parsed.kpi3_aht_efficiency || \"Inefficient\",\n      score: kpi3Score,\n      note: parsed.kpi3_note || \"\"\n    },\n    {\n      kpi_id: 4,\n      name: \"Call Abandonment\",\n      value: parsed.kpi4_call_abandonment || \"No\",\n      score: kpi4Score,\n      note: parsed.kpi4_note || \"\"\n    },\n    {\n      kpi_id: 5,\n      name: \"CSAT Indicator\",\n      value: parsed.kpi5_csat_indicator || \"Low\",\n      score: kpi5Score,\n      note: parsed.kpi5_note || \"\"\n    },\n    {\n      kpi_id: 6,\n      name: \"Call Quality Score\",\n      value: parsed.kpi6_call_quality_score || 3,\n      score: (parsed.kpi6_call_quality_score || 3) * 20,\n      note: parsed.kpi6_note || \"\"\n    },\n    {\n      kpi_id: 7,\n      name: \"Hold Compliance\",\n      value: parsed.kpi7_hold_compliance || \"NA\",\n      score: parsed.kpi7_hold_compliance === 'Compliant' ? 100 : 0,\n      note: parsed.kpi7_note || \"\"\n    },\n    {\n      kpi_id: 8,\n      name: \"IVR Transfer\",\n      value: parsed.kpi8_transfer_to_ivr || \"NA\",\n      score: parsed.kpi8_transfer_to_ivr === 'Yes' ? 100 : 0,\n      note: parsed.kpi8_note || \"\"\n    },\n    {\n      kpi_id: 9,\n      name: \"Process Adherence\",\n      value: parsed.kpi9_process_adherence || \"None\",\n      score: parsed.kpi9_process_adherence === 'Full' ? 100 : parsed.kpi9_process_adherence === 'Partial' ? 60 : 0,\n      note: parsed.kpi9_note || \"\"\n    },\n    {\n      kpi_id: 10,\n      name: \"Escalation\",\n      value: parsed.kpi10_escalated || \"No\",\n      score: parsed.kpi10_escalated === 'No' ? 100 : 0,\n      note: parsed.kpi10_note || \"\"\n    },\n    {\n      kpi_id: 11,\n      name: \"Call Intent\",\n      value: callTopic, // Dynamic resolved topic\n      call_classification: callCategory, // Dynamic resolved classification\n      score: 100,\n      note: parsed.kpi11_intent_detail || \"\"\n    },\n    {\n      kpi_id: 12,\n      name: \"Service Level\",\n      value: parsed.kpi12_service_level || \"Requires Telephony Data\",\n      score: null,\n      note: \"Cannot determine from transcript.\"\n    },\n    {\n      kpi_id: 13,\n      name: \"Repeat Call\",\n      value: parsed.kpi13_repeat_call || \"Requires CRM Data\",\n      repeat_call_signal: parsed.repeat_call_signal === 'Yes',\n      score: null,\n      note: parsed.repeat_call_signal === 'Yes' ? \"Repeat call signal detected.\" : \"No repeat call signals found.\"\n    },\n    {\n      kpi_id: 14,\n      name: \"Query Raised\",\n      value: parsed.kpi14_query_raised || \"No\",\n      score: kpi14Score,\n      note: parsed.kpi14_note || \"\"\n    },\n    {\n      kpi_id: 15,\n      name: \"Customer & Agent Sentiment\",\n      customer_sentiment: parsed.kpi15_customer_sentiment || \"Neutral\",\n      agent_sentiment: parsed.kpi15_agent_sentiment || \"Professional\",\n      score: 100,\n      note: parsed.kpi15_sentiment_detail || \"\"\n    }\n  ];\n\n  const now = new Date().toISOString();\n  const callId = 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);\n\n  // Parse duration to MM:SS format\n  const mm = Math.floor(durationSec / 60);\n  const ss = Math.round(durationSec % 60);\n  const durationStr = codeTool.duration_mmss || `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;\n\n  // Get correct audio URL\n  const audioUrl = fileDetails.publicUrl || fileDetails.public_url || fileDetails.audio_url || codeTool.audio_url || triggerBody['audio_url'] || trigger['audio_url'] || triggerBody['recording'] || trigger['recording'] || \"\";\n\n  // Dynamic Resolution of AI Coaching Note\n  const aiCoachingNote = parsed.coaching_summary_note || parsed.coaching_reason || \"\";\n\n  return {\n    status: \"completed\",\n    call_id: callId,\n    duration: durationStr,\n    language: parsed.language || \"Unknown\",\n    audio_url: audioUrl,\n    filename: filename, // returns clean filename without folder paths\n    call_date: callDate || now.split('T')[0],\n    kpi_score: kpiScore,\n    sentiment: parsed.kpi15_customer_sentiment || \"Neutral\",\n    sop_score: sopScore,\n    agent_code: agentCode,\n    agent_name: agentName,\n    churn_risk: parsed.churn_risk || \"None\",\n    created_at: now,\n    call_intent: callTopic, // Dynamic resolved topic\n    call_topic: callTopic, // Added at ROOT level for direct database mapping\n    call_sub_topic: callSubTopic, // Added at ROOT level for direct database mapping\n    kpi_results: JSON.stringify(kpiResultsArray),\n    sop_results: JSON.stringify(sopResultsArray),\n    call_summary: parsed.call_summary || \"\",\n    intelligence: JSON.stringify({\n      call_category: callCategory,\n      call_topic: callTopic,\n      call_sub_topic: callSubTopic,\n      customer_type: parsed.customer_type || \"Unknown\",\n      churn_risk: parsed.churn_risk || \"None\",\n      coaching_priority: parsed.coaching_priority || \"Green\",\n      coaching_summary_note: aiCoachingNote,\n      compliance_risk: parsed.compliance_risk || \"None\",\n      ztp_violation: parsed.ztp_violation || \"No\",\n      probing_quality: parsed.probing_quality || \"NA\",\n      empathy_score: parsed.empathy_score !== undefined ? parsed.empathy_score : 3,\n      customer_pain_point: parsed.customer_pain_point || \"\",\n      kpi11_secondary_intent: parsed.kpi11_secondary_intent || \"None\",\n      // Naye BFSI Fields in Intelligence\n      bfsi_false_guarantee_flag: parsed.bfsi_false_guarantee_flag || \"No\",\n      bfsi_risk_disclaimer_spoken: parsed.bfsi_risk_disclaimer_spoken || \"NA\",\n      bfsi_identity_verified: parsed.bfsi_identity_verified || \"Yes\",\n      bfsi_product_category: parsed.bfsi_product_category || callTopic,\n      bfsi_compliance_score: parsed.bfsi_compliance_score !== undefined ? parsed.bfsi_compliance_score : 100\n    }),\n    processed_at: now,\n    coaching_note: aiCoachingNote, // Auto-mapped AI Coaching Note\n    coaching_summary_note: aiCoachingNote,\n    mobile_number: mobileNumber,\n    quality_score: parsed.kpi6_call_quality_score || 3,\n    ztp_violation: parsed.ztp_violation || \"No\",\n    compliance_risk: parsed.compliance_risk || \"None\",\n    recommendations: parsed.recommended_actions || \"None\",\n    coaching_priority: parsed.coaching_priority || \"Green\",\n    improvement_areas: parsed.improvement_areas || \"None\",\n    cleaned_transcript: transcript,\n    call_classification: callCategory,\n    \n    // Additional Naya Fields (Mapped directly)\n    customer_type: parsed.customer_type || \"Unknown\",\n    empathy_score: parsed.empathy_score !== undefined ? parsed.empathy_score : 3,\n    probing_quality: parsed.probing_quality || \"NA\",\n    customer_pain_point: parsed.customer_pain_point || \"\",\n\n    // Naye BFSI Fields (Mapped directly at Root level)\n    bfsi_false_guarantee_flag: parsed.bfsi_false_guarantee_flag || \"No\",\n    bfsi_risk_disclaimer_spoken: parsed.bfsi_risk_disclaimer_spoken || \"NA\",\n    bfsi_identity_verified: parsed.bfsi_identity_verified || \"Yes\",\n    bfsi_product_category: parsed.bfsi_product_category || callTopic,\n    bfsi_compliance_score: parsed.bfsi_compliance_score !== undefined ? parsed.bfsi_compliance_score : 100\n  };\n};",
+                                  "packageJson": "{}"
+                                },
+                                "errorHandlingOptions": {
+                                  "retryOnFailure": {
+                                    "value": false
+                                  },
+                                  "continueOnFailure": {
+                                    "value": false
+                                  }
+                                }
+                              },
+                              "nextAction": {
+                                "name": "step_34",
+                                "skip": false,
+                                "type": "PIECE",
+                                "valid": true,
+                                "displayName": "Write analysis to V2 (/api/inbound/calls)",
+                                "nextAction": {
+                                  "name": "step_41",
+                                  "skip": false,
+                                  "type": "PIECE",
+                                  "valid": true,
+                                  "displayName": "Return response",
+                                  "nextAction": null,
+                                  "settings": {
+                                    "input": {
+                                      "fields": {
+                                        "body": {
+                                          "ok": true,
+                                          "call_row_id": "{{trigger['body']['call_row_id']}}",
+                                          "status": "processed"
+                                        },
+                                        "status": 200,
+                                        "headers": {}
+                                      },
+                                      "respond": "stop",
+                                      "responseType": "json"
+                                    },
+                                    "pieceName": "@puchoaistudio/tool-webhook",
+                                    "actionName": "return_response",
+                                    "sampleData": {},
+                                    "pieceVersion": "^2.0.4",
+                                    "propertySettings": {
+                                      "fields": {
+                                        "type": "MANUAL",
+                                        "schema": {
+                                          "body": {
+                                            "type": "JSON",
+                                            "required": true,
+                                            "displayName": "JSON Body"
+                                          },
+                                          "status": {
+                                            "type": "NUMBER",
+                                            "required": false,
+                                            "displayName": "Status",
+                                            "defaultValue": 200
+                                          },
+                                          "headers": {
+                                            "type": "OBJECT",
+                                            "required": false,
+                                            "displayName": "Headers"
+                                          }
+                                        }
+                                      },
+                                      "respond": {
+                                        "type": "MANUAL"
+                                      },
+                                      "responseType": {
+                                        "type": "MANUAL"
+                                      }
+                                    },
+                                    "errorHandlingOptions": {
+                                      "retryOnFailure": {
+                                        "value": false
+                                      },
+                                      "continueOnFailure": {
+                                        "value": false
+                                      }
+                                    }
+                                  }
+                                },
+                                "settings": {
+                                  "input": {
+                                    "method": "POST",
+                                    "url": "{{trigger['body']['app_url']}}/api/inbound/calls",
+                                    "headers": {
+                                      "Content-Type": "application/json",
+                                      "Authorization": "Bearer {{trigger['body']['inbound_token']}}",
+                                      "X-Flow": "CALL_PROCESSING"
+                                    },
+                                    "queryParams": {},
+                                    "authType": "NONE",
+                                    "body_type": "json",
+                                    "body": {
+                                      "data": {
+                                        "org_id": "{{trigger['body']['org_id']}}",
+                                        "call_row_id": "{{trigger['body']['call_row_id']}}",
+                                        "filename": "{{step_33['filename']}}",
+                                        "status": "processed",
+                                        "call_id": "{{step_33['call_id']}}",
+                                        "duration": "{{step_33['duration']}}",
+                                        "language": "{{step_33['language']}}",
+                                        "audio_url": "{{step_33['audio_url']}}",
+                                        "call_date": "{{step_33['call_date']}}",
+                                        "kpi_score": "{{step_33['kpi_score']}}",
+                                        "sentiment": "{{step_33['sentiment']}}",
+                                        "sop_score": "{{step_33['sop_score']}}",
+                                        "agent_code": "{{step_33['agent_code']}}",
+                                        "agent_name": "{{step_33['agent_name']}}",
+                                        "call_topic": "{{step_33['call_topic']}}",
+                                        "churn_risk": "{{step_33['churn_risk']}}",
+                                        "call_intent": "{{step_33['call_intent']}}",
+                                        "kpi_results": "{{step_33['kpi_results']}}",
+                                        "sop_results": "{{step_33['sop_results']}}",
+                                        "call_summary": "{{step_33['call_summary']}}",
+                                        "intelligence": "{{step_33['intelligence']}}",
+                                        "processed_at": "{{step_33['processed_at']}}",
+                                        "coaching_note": "{{step_33['coaching_note']}}",
+                                        "mobile_number": "{{step_33['mobile_number']}}",
+                                        "quality_score": "{{step_33['quality_score']}}",
+                                        "ztp_violation": "{{step_33['ztp_violation']}}",
+                                        "call_sub_topic": "{{step_33['call_sub_topic']}}",
+                                        "compliance_risk": "{{step_33['compliance_risk']}}",
+                                        "recommendations": "{{step_33['recommendations']}}",
+                                        "coaching_priority": "{{step_33['coaching_priority']}}",
+                                        "improvement_areas": "{{step_33['improvement_areas']}}",
+                                        "cleaned_transcript": "{{step_17['data']['response']}}",
+                                        "call_classification": "{{step_33['call_classification']}}",
+                                        "bfsi_compliance_score": "{{step_33['bfsi_compliance_score']}}",
+                                        "bfsi_product_category": "{{step_33['bfsi_product_category']}}",
+                                        "coaching_summary_note": "{{step_33['coaching_summary_note']}}",
+                                        "bfsi_identity_verified": "{{step_33['bfsi_identity_verified']}}",
+                                        "bfsi_false_guarantee_flag": "{{step_33['bfsi_false_guarantee_flag']}}",
+                                        "bfsi_risk_disclaimer_spoken": "{{step_33['bfsi_risk_disclaimer_spoken']}}"
+                                      }
+                                    }
+                                  },
+                                  "pieceName": "@puchoaistudio/tool-http",
+                                  "actionName": "send_request",
+                                  "sampleData": {},
+                                  "pieceVersion": "^2.0.0",
+                                  "propertySettings": {
+                                    "method": {
+                                      "type": "MANUAL"
+                                    },
+                                    "url": {
+                                      "type": "MANUAL"
+                                    },
+                                    "headers": {
+                                      "type": "MANUAL",
+                                      "schema": {}
+                                    },
+                                    "queryParams": {
+                                      "type": "MANUAL",
+                                      "schema": {}
+                                    },
+                                    "authType": {
+                                      "type": "MANUAL"
+                                    },
+                                    "body_type": {
+                                      "type": "MANUAL"
+                                    },
+                                    "body": {
+                                      "type": "MANUAL",
+                                      "schema": {}
+                                    }
+                                  },
+                                  "errorHandlingOptions": {
+                                    "retryOnFailure": {
+                                      "value": true
+                                    },
+                                    "continueOnFailure": {
+                                      "value": false
+                                    }
+                                  }
+                                }
+                              },
+                              "displayName": "Code Copy Copy"
+                            },
+                            "displayName": "Ask LLM Copy Copy"
+                          },
+                          "displayName": "Delay For Copy"
+                        },
+                        {
+                          "name": "step_42",
+                          "skip": false,
+                          "type": "PIECE",
+                          "valid": true,
+                          "displayName": "Mark call failed in V2",
+                          "nextAction": {
+                            "name": "step_43",
+                            "skip": false,
+                            "type": "PIECE",
+                            "valid": true,
+                            "displayName": "Return response",
+                            "nextAction": null,
+                            "settings": {
+                              "input": {
+                                "fields": {
+                                  "body": {
+                                    "ok": false,
+                                    "call_row_id": "{{trigger['body']['call_row_id']}}",
+                                    "status": "failed"
+                                  },
+                                  "status": 200,
+                                  "headers": {}
+                                },
+                                "respond": "stop",
+                                "responseType": "json"
+                              },
+                              "pieceName": "@puchoaistudio/tool-webhook",
+                              "actionName": "return_response",
+                              "sampleData": {},
+                              "pieceVersion": "^2.0.4",
+                              "propertySettings": {
+                                "fields": {
+                                  "type": "MANUAL",
+                                  "schema": {
+                                    "body": {
+                                      "type": "JSON",
+                                      "required": true,
+                                      "displayName": "JSON Body"
+                                    },
+                                    "status": {
+                                      "type": "NUMBER",
+                                      "required": false,
+                                      "displayName": "Status",
+                                      "defaultValue": 200
+                                    },
+                                    "headers": {
+                                      "type": "OBJECT",
+                                      "required": false,
+                                      "displayName": "Headers"
+                                    }
+                                  }
+                                },
+                                "respond": {
+                                  "type": "MANUAL"
+                                },
+                                "responseType": {
+                                  "type": "MANUAL"
+                                }
+                              },
+                              "errorHandlingOptions": {
+                                "retryOnFailure": {
+                                  "value": false
+                                },
+                                "continueOnFailure": {
+                                  "value": false
+                                }
+                              }
+                            }
+                          },
+                          "settings": {
+                            "input": {
+                              "method": "POST",
+                              "url": "{{trigger['body']['app_url']}}/api/inbound/calls",
+                              "headers": {
+                                "Content-Type": "application/json",
+                                "Authorization": "Bearer {{trigger['body']['inbound_token']}}",
+                                "X-Flow": "CALL_PROCESSING"
+                              },
+                              "queryParams": {},
+                              "authType": "NONE",
+                              "body_type": "json",
+                              "body": {
+                                "data": {
+                                  "org_id": "{{trigger['body']['org_id']}}",
+                                  "call_row_id": "{{trigger['body']['call_row_id']}}",
+                                  "filename": "{{trigger['body']['filename']}}",
+                                  "status": "failed",
+                                  "status_reason": "Speech-to-text did not complete: {{step_15['data']['response']['status']}}"
+                                }
+                              }
+                            },
+                            "pieceName": "@puchoaistudio/tool-http",
+                            "actionName": "send_request",
+                            "sampleData": {},
+                            "pieceVersion": "^2.0.0",
+                            "propertySettings": {
+                              "method": {
+                                "type": "MANUAL"
+                              },
+                              "url": {
+                                "type": "MANUAL"
+                              },
+                              "headers": {
+                                "type": "MANUAL",
+                                "schema": {}
+                              },
+                              "queryParams": {
+                                "type": "MANUAL",
+                                "schema": {}
+                              },
+                              "authType": {
+                                "type": "MANUAL"
+                              },
+                              "body_type": {
+                                "type": "MANUAL"
+                              },
+                              "body": {
+                                "type": "MANUAL",
+                                "schema": {}
+                              }
+                            },
+                            "errorHandlingOptions": {
+                              "retryOnFailure": {
+                                "value": true
+                              },
+                              "continueOnFailure": {
+                                "value": false
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "settings": {
+                        "branches": [
+                          {
+                            "branchName": "Success/Completed",
+                            "branchType": "CONDITION",
+                            "conditions": [
+                              [
+                                {
+                                  "operator": "TEXT_EXACTLY_MATCHES",
+                                  "firstValue": "{{step_15['data']['response']['status']}}",
+                                  "secondValue": "completed",
+                                  "caseSensitive": false
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "branchName": "Loop/Wait",
+                            "branchType": "CONDITION",
+                            "conditions": [
+                              [
+                                {
+                                  "operator": "TEXT_EXACTLY_MATCHES",
+                                  "firstValue": "{{step_15['data']['response']['status']}}",
+                                  "secondValue": "running",
+                                  "caseSensitive": false
+                                }
+                              ],
+                              [
+                                {
+                                  "operator": "TEXT_CONTAINS",
+                                  "firstValue": "{{step_15['data']['response']['status']}}",
+                                  "secondValue": "processing",
+                                  "caseSensitive": false
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "branchName": "Otherwise",
+                            "branchType": "FALLBACK"
+                          }
+                        ],
+                        "sampleData": {},
+                        "executionType": "EXECUTE_FIRST_MATCH"
+                      },
+                      "displayName": "Router Copy",
+                      "nextAction": null
+                    },
+                    {
+                      "name": "step_44",
+                      "skip": false,
+                      "type": "PIECE",
+                      "valid": true,
+                      "displayName": "Mark call skipped in V2 (non-contact)",
+                      "nextAction": {
+                        "name": "step_45",
+                        "skip": false,
+                        "type": "PIECE",
+                        "valid": true,
+                        "displayName": "Return response",
+                        "nextAction": null,
+                        "settings": {
+                          "input": {
+                            "fields": {
+                              "body": {
+                                "ok": true,
+                                "call_row_id": "{{trigger['body']['call_row_id']}}",
+                                "status": "skipped"
+                              },
+                              "status": 200,
+                              "headers": {}
+                            },
+                            "respond": "stop",
+                            "responseType": "json"
+                          },
+                          "pieceName": "@puchoaistudio/tool-webhook",
+                          "actionName": "return_response",
+                          "sampleData": {},
+                          "pieceVersion": "^2.0.4",
+                          "propertySettings": {
+                            "fields": {
+                              "type": "MANUAL",
+                              "schema": {
+                                "body": {
+                                  "type": "JSON",
+                                  "required": true,
+                                  "displayName": "JSON Body"
+                                },
+                                "status": {
+                                  "type": "NUMBER",
+                                  "required": false,
+                                  "displayName": "Status",
+                                  "defaultValue": 200
+                                },
+                                "headers": {
+                                  "type": "OBJECT",
+                                  "required": false,
+                                  "displayName": "Headers"
+                                }
+                              }
+                            },
+                            "respond": {
+                              "type": "MANUAL"
+                            },
+                            "responseType": {
+                              "type": "MANUAL"
+                            }
+                          },
+                          "errorHandlingOptions": {
+                            "retryOnFailure": {
+                              "value": false
+                            },
+                            "continueOnFailure": {
+                              "value": false
+                            }
+                          }
+                        }
+                      },
+                      "settings": {
+                        "input": {
+                          "method": "POST",
+                          "url": "{{trigger['body']['app_url']}}/api/inbound/calls",
+                          "headers": {
+                            "Content-Type": "application/json",
+                            "Authorization": "Bearer {{trigger['body']['inbound_token']}}",
+                            "X-Flow": "CALL_PROCESSING"
+                          },
+                          "queryParams": {},
+                          "authType": "NONE",
+                          "body_type": "json",
+                          "body": {
+                            "data": {
+                              "org_id": "{{trigger['body']['org_id']}}",
+                              "call_row_id": "{{trigger['body']['call_row_id']}}",
+                              "filename": "{{trigger['body']['filename']}}",
+                              "status": "skipped",
+                              "status_reason": "{{step_18['reason']}}",
+                              "cleaned_transcript": "{{step_17['data']['response']}}",
+                              "duration": "{{step_18['duration_mmss']}}",
+                              "duration_seconds": "{{step_18['duration_seconds']}}"
+                            }
+                          }
+                        },
+                        "pieceName": "@puchoaistudio/tool-http",
+                        "actionName": "send_request",
+                        "sampleData": {},
+                        "pieceVersion": "^2.0.0",
+                        "propertySettings": {
+                          "method": {
+                            "type": "MANUAL"
+                          },
+                          "url": {
+                            "type": "MANUAL"
+                          },
+                          "headers": {
+                            "type": "MANUAL",
+                            "schema": {}
+                          },
+                          "queryParams": {
+                            "type": "MANUAL",
+                            "schema": {}
+                          },
+                          "authType": {
+                            "type": "MANUAL"
+                          },
+                          "body_type": {
+                            "type": "MANUAL"
+                          },
+                          "body": {
+                            "type": "MANUAL",
+                            "schema": {}
+                          }
+                        },
+                        "errorHandlingOptions": {
+                          "retryOnFailure": {
+                            "value": true
+                          },
+                          "continueOnFailure": {
+                            "value": false
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "settings": {
+                    "branches": [
+                      {
+                        "branchName": "Branch 1",
+                        "branchType": "CONDITION",
+                        "conditions": [
+                          [
+                            {
+                              "operator": "TEXT_EXACTLY_MATCHES",
+                              "firstValue": "{{step_18['process']}}",
+                              "secondValue": "Yes",
+                              "caseSensitive": false
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "branchName": "Otherwise",
+                        "branchType": "FALLBACK"
+                      }
+                    ],
+                    "sampleData": {},
+                    "executionType": "EXECUTE_FIRST_MATCH"
+                  },
+                  "displayName": "Router Copy",
+                  "nextAction": null
+                },
+                "displayName": "Code Copy"
+              },
+              "displayName": "Ask LLM Copy"
+            },
+            "displayName": "Check Transcription Status"
+          },
+          "displayName": "Delay For"
+        },
+        "displayName": "Speech to Text"
+      }
+    },
+    "valid": true,
+    "agentIds": [],
+    "connectionIds": [],
+    "schemaVersion": "7"
+  },
+  "blogUrl": ""
+}
