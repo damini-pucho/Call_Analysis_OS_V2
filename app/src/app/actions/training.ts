@@ -43,7 +43,7 @@ export async function assignTraining(input: unknown) {
         [user.orgId, code, data.module_id, data.title, data.gap, data.source_call_id, user.id, data.due_date]);
       const agent = await db.one<{ user_id: string | null; agent_name: string }>('SELECT user_id, agent_name FROM agents WHERE org_id = $1 AND agent_code = $2', [user.orgId, code]);
       if (agent?.user_id && org?.config?.notify_on?.training_assigned !== false) {
-        await notify(db, user.orgId, [agent.user_id], { kind: 'training', title: `New training: ${data.title}`, body: `${user.name} assigned you "${data.title}"${data.gap ? ` for: ${data.gap}` : ''}. Due ${data.due_date}.`, link: '/training' });
+        await notify(db, user.orgId, [agent.user_id], { kind: 'training', title: `New training: ${data.title}`, body: `${user.name} assigned you "${data.title}"${data.gap ? ` for: ${data.gap}` : ''}. Due ${data.due_date}. Your dashboard is locked until your team leader reviews it and marks it Done.`, link: '/training' });
       }
       await dispatchCrm(db, user.orgId, 'training.assigned', { assignment_id: row!.id, agent_code: code, title: data.title, due_date: data.due_date });
     }
@@ -52,21 +52,45 @@ export async function assignTraining(input: unknown) {
   }, 'training.assign');
 }
 
-const Status = z.object({ id: zId, status: z.enum(['Assigned', 'In Progress', 'Completed']), agent_notes: opt(1000) }).strict();
-/** An agent updates their own assignment; a manager may update any in their scope. */
+// v2.1: no training test, and nobody completes training by themselves — progress and notes only. Completion is the team
+// leader's "Done" (markTrainingDone), which is also what unlocks the agent's dashboard.
+const Status = z.object({ id: zId, status: z.enum(['Assigned', 'In Progress']), agent_notes: opt(1000) }).strict();
+/** An agent updates progress / notes on their own assignment; a manager may update any in their scope. */
 export async function updateAssignment(input: unknown) {
   return guard('training.view', Status, input, async ({ db, user, data }) => {
     const scope = await agentScope(db, user);
-    const a = await db.one<{ agent_code: string; assigned_by: string; title: string }>('SELECT agent_code, assigned_by, title FROM training_assignments WHERE id = $1 AND org_id = $2 AND ($3::text[] IS NULL OR agent_code = ANY($3::text[]))', [data.id, user.orgId, scope]);
+    const a = await db.one<{ status: string }>('SELECT status FROM training_assignments WHERE id = $1 AND org_id = $2 AND ($3::text[] IS NULL OR agent_code = ANY($3::text[]))', [data.id, user.orgId, scope]);
     if (!a) return { ok: false, message: 'Assignment not found.' };
-    await db.q("UPDATE training_assignments SET status = $2, agent_notes = COALESCE($3, agent_notes), completed_at = CASE WHEN $2 = 'Completed' THEN now() ELSE NULL END, updated_at = now() WHERE id = $1",
-      [data.id, data.status, data.agent_notes]);
-    if (data.status === 'Completed' && a.assigned_by && a.assigned_by !== user.id) {
-      await notify(db, user.orgId, [a.assigned_by], { kind: 'training', title: `Training completed: ${a.title}`, body: `${user.name} marked "${a.title}" as completed.`, link: '/training' });
-    }
+    if (a.status === 'Completed') return { ok: false, message: 'This training is already marked Done.' };
+    await db.q('UPDATE training_assignments SET status = $2, agent_notes = COALESCE($3, agent_notes), updated_at = now() WHERE id = $1', [data.id, data.status, data.agent_notes]);
     revalidatePath('/training');
-    return { ok: true, message: 'Progress saved.' };
+    return { ok: true, message: 'Progress saved. Your team leader marks it Done after reviewing.' };
   }, 'training.update');
+}
+
+const Done = z.object({ id: zId, review_note: opt(1000) }).strict();
+/** The team leader (or any manager with "Assign training" over this agent) reviews and marks the training Done.
+ *  When it was the agent's last open assignment, their dashboard unlocks at their next request. */
+export async function markTrainingDone(input: unknown) {
+  return guard('training.assign', Done, input, async ({ db, user, data }) => {
+    const scope = await agentScope(db, user);
+    const a = await db.one<{ agent_code: string; title: string; status: string }>('SELECT agent_code, title, status FROM training_assignments WHERE id = $1 AND org_id = $2 AND ($3::text[] IS NULL OR agent_code = ANY($3::text[]))', [data.id, user.orgId, scope]);
+    if (!a) return { ok: false, message: 'Assignment not found in your team.' };
+    if (a.status === 'Completed') return { ok: false, message: 'Already marked Done.' };
+    const agent = await db.one<{ user_id: string | null }>('SELECT user_id FROM agents WHERE org_id = $1 AND agent_code = $2', [user.orgId, a.agent_code]);
+    if (agent?.user_id === user.id) return { ok: false, message: 'Your own training is marked Done by your team leader.' };
+    await db.q("UPDATE training_assignments SET status = 'Completed', completed_at = now(), completed_by = $2, review_note = $3, updated_at = now() WHERE id = $1", [data.id, user.id, data.review_note]);
+    const open = await db.one<{ n: number }>("SELECT count(*)::int n FROM training_assignments WHERE org_id = $1 AND agent_code = $2 AND status <> 'Completed'", [user.orgId, a.agent_code]);
+    if (agent?.user_id) {
+      await notify(db, user.orgId, [agent.user_id], {
+        kind: 'training', title: `Training done: ${a.title}`,
+        body: `${user.name} reviewed "${a.title}" and marked it Done.${data.review_note ? ` Note: ${data.review_note}` : ''} ${open?.n ? `${open.n} training(s) still open — your dashboard stays locked until they are done.` : 'Your dashboard is unlocked.'}`,
+        link: open?.n ? '/training' : '/overview',
+      });
+    }
+    revalidatePath('/training'); revalidatePath('/agents');
+    return { ok: true, message: open?.n ? `Marked Done. The agent still has ${open.n} open training(s).` : 'Marked Done. The agent’s dashboard is unlocked.' };
+  }, 'training.done');
 }
 export async function deleteAssignment(input: unknown) {
   return guard('training.assign', z.object({ id: zId }).strict(), input, async ({ db, user, data }) => {

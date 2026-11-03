@@ -11,7 +11,7 @@ import { useCan, usePlayer } from '@/components/providers';
 import { updateCustomer } from '@/app/actions/misc';
 import * as M from '@/lib/metrics';
 
-export default function CustomerDetail({ customer: c, calls, maskPii }) {
+export default function CustomerDetail({ customer: c, calls, maskPii, zoho }) {
   const can = useCan(); const player = usePlayer();
   const [edit, setEdit] = useState(false); const [openId, setOpenId] = useState(null);
   const done = calls.filter(M.isProcessed);
@@ -45,6 +45,7 @@ export default function CustomerDetail({ customer: c, calls, maskPii }) {
           {topics.length > 0 && <Card title="What they call about"><ul className="space-y-1.5">{topics.slice(0, 6).map((t) => <li key={t.name} className="flex justify-between text-[13px]"><span className="text-ink-2">{t.name}</span><span className="tabular-nums text-ink-3">{t.value}</span></li>)}</ul></Card>}
         </div>
         <div className="space-y-4">
+          {zoho && <ZohoPanel z={zoho} />}
           {done.length > 1 && <Card title="Sentiment over time"><Trend area={false} data={daily} series={[{ key: 'pos', name: 'Positive', color: 'var(--ok)' }, { key: 'neu', name: 'Neutral', color: 'var(--cat-8)' }, { key: 'neg', name: 'Negative', color: 'var(--bad)' }]} height={200} /></Card>}
           <Card title="Call history" sub="Recordings, transcripts and analysis results" pad={false}>
             {!calls.length ? <Empty title="No calls in your scope" /> : (
@@ -100,5 +101,34 @@ function EditCustomer({ open, onClose, c }) {
         <Field label="Notes" className="sm:col-span-2"><Textarea value={f.notes} onChange={(e) => set('notes', e.target.value)} /></Field>
       </div>
     </Modal>
+  );
+}
+
+// v2.1 — the caller as Zoho CRM knows them: record, Deals, Calls, Notes (read live from Zoho)
+function ZohoPanel({ z }) {
+  if (z.error) return <Card title="Zoho CRM"><p className="text-[13px] text-bad-text">Could not read Zoho: {z.error}</p></Card>;
+  if (!z.found) return <Card title="Zoho CRM"><p className="text-[13px] text-ink-3">No Zoho Contact or Lead has this phone number.</p></Card>;
+  const r = z.record; const name = r.Full_Name || [r.First_Name, r.Last_Name].filter(Boolean).join(' ');
+  const when = (v) => (v ? new Date(v).toLocaleDateString('en-GB') : '—');
+  const list = (title, x, render) => (
+    <div className="min-w-0"><div className="label mb-1.5">{title}</div>
+      {x.error ? <p className="text-[12px] text-bad-text">{x.error}</p> : !x.rows.length ? <p className="text-[12px] text-ink-3">None.</p> :
+        <ul className="space-y-1.5">{x.rows.slice(0, 5).map((row) => <li key={row.id} className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-[12px] text-ink-2">{render(row)}</li>)}</ul>}
+    </div>
+  );
+  return (
+    <Card title={<span className="flex items-center gap-2">Zoho CRM <Badge dot={false} tone="info">{z.module === 'Contacts' ? 'Contact' : 'Lead'}</Badge></span>}
+      action={z.link && <a href={z.link} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">Open in Zoho</a>}>
+      <div className="grid gap-x-6 gap-y-1 text-[13px] sm:grid-cols-2">
+        <MetaRow label="Name">{name}</MetaRow><MetaRow label="Owner">{r.Owner?.name}</MetaRow>
+        <MetaRow label="Email">{r.Email}</MetaRow><MetaRow label={z.module === 'Contacts' ? 'Account' : 'Company'}>{r.Account_Name?.name || r.Company}</MetaRow>
+        {z.module === 'Leads' && <MetaRow label="Lead status">{r.Lead_Status}</MetaRow>}<MetaRow label="Source">{r.Lead_Source}</MetaRow>
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        {z.module === 'Contacts' && list('Deals', z.deals, (d) => <><span className="font-medium text-ink">{d.Deal_Name}</span> · {d.Stage}{d.Amount != null ? ` · ₹${Number(d.Amount).toLocaleString('en-IN')}` : ''}</>)}
+        {list('Calls in Zoho', z.calls, (x) => <><span className="font-medium text-ink">{x.Subject}</span><br />{x.Call_Type} · {when(x.Call_Start_Time)} · {x.Call_Duration || '—'}</>)}
+        {list('Notes', z.notes, (n) => <><span className="font-medium text-ink">{n.Note_Title || 'Note'}</span> · {when(n.Created_Time)}<br /><span className="line-clamp-2">{n.Note_Content}</span></>)}
+      </div>
+    </Card>
   );
 }

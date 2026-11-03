@@ -8,11 +8,12 @@ import { toast } from 'sonner';
 import { PageHeader, Card, Badge, Empty, Button, Modal, Field, Input, Switch, Callout, Kpi } from '@/components/ui';
 import { useCan } from '@/components/providers';
 import { saveConnection, rotateConnection, deleteConnection, testConnection, importCustomers } from '@/app/actions/misc';
+import ZohoCard from './zoho';
 
 const EVENTS = [['call.processed', 'Call analysed'], ['customer.updated', 'Customer updated'], ['training.assigned', 'Training assigned']];
-const VENDORS = ['HubSpot', 'Zoho CRM', 'Salesforce', 'LeadSquared', 'Freshsales'];
+const VENDORS = ['HubSpot', 'Salesforce', 'LeadSquared', 'Freshsales'];
 
-export default function CrmView({ connections, log, customers, appUrl }) {
+export default function CrmView({ connections, log, customers, appUrl, zoho }) {
   const can = useCan(); const router = useRouter(); const csv = useRef(null);
   const [edit, setEdit] = useState(null); const [secret, setSecret] = useState(null); const [busy, setBusy] = useState(null);
   const manage = can('crm.manage');
@@ -27,7 +28,9 @@ export default function CrmView({ connections, log, customers, appUrl }) {
         <Kpi label="Failed syncs (last 100)" value={log.filter((l) => l.status === 'failed').length} icon={RefreshCw} tone={log.some((l) => l.status === 'failed') ? 'bad' : undefined} />
       </div>
 
-      <Card title="Connections" pad={false}>
+      <ZohoCard zoho={zoho} manage={manage} />
+
+      <Card title="Webhook connections" pad={false}>
         {!connections.length ? <Empty icon={Plug} title="No CRM connected" action={manage ? <Button variant="primary" onClick={() => setEdit({})}>Create a webhook connection</Button> : null}>A webhook connection works with any CRM or automation tool that can receive HTTPS posts, and can push customers back in.</Empty> : (
           <ul className="divide-y divide-line">
             {connections.map((c) => (
@@ -57,7 +60,7 @@ export default function CrmView({ connections, log, customers, appUrl }) {
         <Card title="Import customers from CSV" sub="Columns: mobile_number (required), name, email, city, segment, external_id, tags (separated by ; )">
           {manage ? <><Button onClick={() => csv.current?.click()} loading={busy === 'csv'}><UploadCloud size={15} />Choose CSV</Button><input ref={csv} type="file" accept=".csv" className="hidden" onChange={(e) => onCsv(e.target.files?.[0])} /><p className="mt-2 text-[12px] text-ink-3">Existing customers are matched on mobile number and updated; nothing is deleted.</p></> : <p className="text-[13px] text-ink-3">Your role can view the integration but not import.</p>}
         </Card>
-        <Card title="Native CRM connectors" sub="Not available in this version — use a webhook connection or your CRM's automation in the meantime">
+        <Card title="Other CRM connectors" sub="Not available in this version — use a webhook connection or your CRM's automation in the meantime">
           <div className="flex flex-wrap gap-2">{VENDORS.map((v) => <span key={v} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-[13px] text-ink-3"><Lock size={12} />{v}</span>)}</div>
         </Card>
       </div>

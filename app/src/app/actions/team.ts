@@ -106,19 +106,20 @@ export async function resetUserPassword(input: unknown) {
 
 // ── agents ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 const Agent = z.object({ id: zId.optional(), agent_code: z.string().trim().regex(/^[A-Za-z0-9_\-]{1,32}$/, 'Letters and numbers only'), agent_name: zReq('Name', 120),
-  email: opt(160), user_id: optId, group_id: optId, supervisor_id: optId, is_active: z.boolean() }).strict();
+  email: opt(160), user_id: optId, group_id: optId, supervisor_id: optId, is_active: z.boolean(),
+  dialer_ids: z.array(z.string().trim().min(1).max(64)).max(10).default([]) }).strict();
 export async function saveAgent(input: unknown) {
   return guard('agents.edit', Agent, input, async ({ db, user, data }) => {
     if (data.id) {
       const old = await db.one<{ agent_code: string }>('SELECT agent_code FROM agents WHERE id = $1 AND org_id = $2', [data.id, user.orgId]);
       if (!old) return { ok: false, message: 'Agent not found.' };
-      await db.q('UPDATE agents SET agent_code=$3, agent_name=$4, email=$5, user_id=$6, group_id=$7, supervisor_id=$8, is_active=$9, updated_at=now() WHERE id=$1 AND org_id=$2',
-        [data.id, user.orgId, data.agent_code, data.agent_name, data.email, data.user_id, data.group_id, data.supervisor_id, data.is_active]);
+      await db.q('UPDATE agents SET agent_code=$3, agent_name=$4, email=$5, user_id=$6, group_id=$7, supervisor_id=$8, is_active=$9, dialer_ids=$10, updated_at=now() WHERE id=$1 AND org_id=$2',
+        [data.id, user.orgId, data.agent_code, data.agent_name, data.email, data.user_id, data.group_id, data.supervisor_id, data.is_active, data.dialer_ids]);
       if (old.agent_code !== data.agent_code) await db.q('UPDATE calls SET agent_code = $3 WHERE org_id = $1 AND agent_code = $2', [user.orgId, old.agent_code, data.agent_code]);
       await db.q('UPDATE calls SET agent_name = $3 WHERE org_id = $1 AND agent_code = $2', [user.orgId, data.agent_code, data.agent_name]);
     } else {
-      await db.q('INSERT INTO agents (org_id, agent_code, agent_name, email, user_id, group_id, supervisor_id, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-        [user.orgId, data.agent_code, data.agent_name, data.email, data.user_id, data.group_id, data.supervisor_id, data.is_active]);
+      await db.q('INSERT INTO agents (org_id, agent_code, agent_name, email, user_id, group_id, supervisor_id, is_active, dialer_ids) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+        [user.orgId, data.agent_code, data.agent_name, data.email, data.user_id, data.group_id, data.supervisor_id, data.is_active, data.dialer_ids]);
     }
     revalidatePath('/team'); revalidatePath('/agents');
     return { ok: true, message: 'Agent saved.' };

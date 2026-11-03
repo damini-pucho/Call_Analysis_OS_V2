@@ -43,7 +43,7 @@ export async function getCall(u: SessionUser, id: string) {
 export const loadAgents = cache(async (u: SessionUser) => {
   const scope = await scopeFor(u);
   return plain(await withOrg(u.orgId, (db) => db.q(
-    `SELECT a.id, a.agent_code, a.agent_name, a.email, a.is_active, a.user_id, a.group_id, g.name AS group_name, a.supervisor_id, s.name AS supervisor_name
+    `SELECT a.id, a.agent_code, a.agent_name, a.email, a.is_active, a.user_id, a.group_id, g.name AS group_name, a.supervisor_id, s.name AS supervisor_name, a.dialer_ids
        FROM agents a LEFT JOIN groups g ON g.id = a.group_id LEFT JOIN users s ON s.id = a.supervisor_id
       WHERE a.org_id = $1 AND ($2::text[] IS NULL OR a.agent_code = ANY($2::text[])) ORDER BY a.agent_name`, [u.orgId, scope])));
 });
@@ -116,8 +116,10 @@ export async function loadTraining(u: SessionUser) {
   const scope = await scopeFor(u);
   return withOrg(u.orgId, async (db) => plain({
     modules: await db.q('SELECT m.id, m.title, m.topic, m.description, m.content, m.resource_url, m.duration_min, m.created_at, (SELECT count(*)::int FROM training_assignments t WHERE t.module_id = m.id) AS assigned FROM training_modules m WHERE m.org_id = $1 ORDER BY m.created_at DESC', [u.orgId]),
-    assignments: await db.q(`SELECT t.id, t.agent_code, a.agent_name, t.module_id, t.title, t.gap, t.source_call_id, t.due_date, t.status, t.agent_notes, t.completed_at, t.created_at, x.name AS assigned_by_name
+    assignments: await db.q(`SELECT t.id, t.agent_code, a.agent_name, a.user_id AS agent_user_id, t.module_id, t.title, t.gap, t.source_call_id, t.due_date, t.status, t.agent_notes,
+               t.completed_at, t.created_at, x.name AS assigned_by_name, t.review_note, d.name AS completed_by_name
         FROM training_assignments t LEFT JOIN agents a ON a.org_id = t.org_id AND a.agent_code = t.agent_code LEFT JOIN users x ON x.id = t.assigned_by
+        LEFT JOIN users d ON d.id = t.completed_by
        WHERE t.org_id = $1 AND ($2::text[] IS NULL OR t.agent_code = ANY($2::text[])) ORDER BY t.status = 'Completed', t.due_date NULLS LAST, t.created_at DESC`, [u.orgId, scope]),
   }));
 }

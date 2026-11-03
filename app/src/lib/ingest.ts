@@ -8,6 +8,7 @@ import { saveFile, signedFileUrl } from './files';
 import { callFlow, companyContext } from './flows';
 import { notify, managersOf } from './notify';
 import { dispatchCrm, normMobile } from './crm';
+import { pushCallToZoho } from './zoho';
 
 /** V1 filename format: YYYYMMDD-LEADID_MOBILE_AGENTCODE_CAMPAIGN-FLAG.ext */
 export function parseFilename(filename: string) {
@@ -31,7 +32,7 @@ async function linkCustomer(db: Db, orgId: string, mobile: string | null) {
   return row?.id ?? null;
 }
 
-export async function queueRecording(db: Db, orgId: string, userId: string, filename: string, data: Buffer, batch: string | null) {
+export async function queueRecording(db: Db, orgId: string, userId: string | null, filename: string, data: Buffer, batch: string | null) {
   const f = await saveFile(db, orgId, userId, 'recording', filename, data);
   const p = parseFilename(f.filename);
   let agentName: string | null = null; let direction: string | null = null;
@@ -156,6 +157,13 @@ export async function applyCallResult(db: Db, r: z.infer<typeof CallResult>) {
       call_id: existing.id, mobile_number: r.mobile_number ?? existing.mobile_number, agent_code: code, summary: r.call_summary, intent: r.call_intent,
       classification: r.call_classification, sentiment: r.sentiment, quality_score: r.quality_score, compliance_risk: r.compliance_risk, churn_risk: r.churn_risk,
     });
+    // v2.1: Zoho CRM — a Note (+ Call activity) on the caller's Contact / Lead; failures are logged, never fatal
+    const meta = await db.one<any>('SELECT c.call_date, c.direction, c.duration_seconds, c.customer_id, c.created_at, COALESCE(a.agent_name, c.agent_name) AS agent_name FROM calls c LEFT JOIN agents a ON a.org_id = c.org_id AND a.agent_code = c.agent_code WHERE c.id = $1', [existing.id]);
+    await pushCallToZoho(db, orgId, {
+      call_id: existing.id, customer_id: meta?.customer_id, mobile_number: r.mobile_number ?? existing.mobile_number, agent_code: code, agent_name: meta?.agent_name,
+      call_date: meta?.call_date, direction: meta?.direction, duration_seconds: meta?.duration_seconds, started_at: meta?.created_at, summary: r.call_summary,
+      intent: r.call_intent, classification: r.call_classification, sentiment: r.sentiment, quality_score: r.quality_score, compliance_risk: r.compliance_risk, churn_risk: r.churn_risk,
+    }).catch((e) => console.error('zoho push failed:', e?.message));
   }
   return { ok: true as const, id: existing.id };
 }

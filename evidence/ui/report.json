@@ -1,319 +1,407 @@
 {
-  "when": "2026-10-30T09:59:14.735Z",
+  "when": "2026-11-02T11:00:03.657Z",
   "base": "http://127.0.0.1:3200",
-  "passed": 100,
-  "failed": 0,
+  "passed": 11,
+  "failed": 92,
   "results": [
     {
       "persona": "admin",
       "path": "/overview",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-overview.png"
     },
     {
       "persona": "admin",
       "path": "/calls",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-calls.png"
     },
     {
       "persona": "admin",
       "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
     },
     {
       "persona": "admin",
       "path": "/upload",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-upload.png"
     },
     {
       "persona": "admin",
       "path": "/analytics",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-analytics.png"
     },
     {
       "persona": "admin",
       "path": "/analytics?tab=trends",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-analytics_tab_trends.png"
     },
     {
       "persona": "admin",
       "path": "/analytics?tab=sop",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-analytics_tab_sop.png"
     },
     {
       "persona": "admin",
       "path": "/analytics?tab=language",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-analytics_tab_language.png"
     },
     {
       "persona": "admin",
       "path": "/classification",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-classification.png"
     },
     {
       "persona": "admin",
       "path": "/direction",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-direction.png"
     },
     {
       "persona": "admin",
       "path": "/compliance",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-compliance.png"
     },
     {
       "persona": "admin",
       "path": "/agents",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-agents.png"
     },
     {
       "persona": "admin",
       "path": "/agents/1011",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-agents_1011.png"
     },
     {
       "persona": "admin",
       "path": "/training",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-training.png"
     },
     {
       "persona": "admin",
       "path": "/customers",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-customers.png"
     },
     {
       "persona": "admin",
       "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
     },
     {
       "persona": "admin",
       "path": "/sentiment",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-sentiment.png"
     },
     {
       "persona": "admin",
       "path": "/company",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-company.png"
     },
     {
       "persona": "admin",
       "path": "/company?tab=config",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-company_tab_config.png"
     },
     {
       "persona": "admin",
       "path": "/company?tab=documents",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-company_tab_documents.png"
     },
     {
       "persona": "admin",
       "path": "/company?tab=rules",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-company_tab_rules.png"
     },
     {
       "persona": "admin",
       "path": "/company?tab=campaigns",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-company_tab_campaigns.png"
     },
     {
       "persona": "admin",
       "path": "/crm",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-crm.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/sources",
+      "view": "desktop",
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
+      "screenshot": "desktop-admin-sources.png"
     },
     {
       "persona": "admin",
       "path": "/team",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-team.png"
     },
     {
       "persona": "admin",
       "path": "/settings",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-settings.png"
     },
     {
       "persona": "admin",
       "path": "/notifications",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-notifications.png"
     },
     {
       "persona": "admin",
       "path": "/profile",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-admin-profile.png"
     },
     {
       "persona": "executive",
       "path": "/overview",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-overview.png"
     },
     {
       "persona": "executive",
       "path": "/calls",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-calls.png"
     },
     {
       "persona": "executive",
       "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
     },
     {
       "persona": "executive",
       "path": "/agents/1011",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-agents_1011.png"
     },
     {
       "persona": "executive",
       "path": "/training",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-training.png"
     },
     {
       "persona": "executive",
       "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
     },
     {
       "persona": "executive",
       "path": "/company",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-company.png"
     },
     {
       "persona": "executive",
       "path": "/profile",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-executive-profile.png"
     },
     {
       "persona": "platform",
       "path": "/platform",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "desktop-platform-platform.png"
     },
     {
       "persona": "public",
       "path": "/login",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Quick Fill, Select Role, Admin"
+      ],
       "screenshot": "desktop-public-login.png"
     },
     {
       "persona": "public",
       "path": "/signup",
       "view": "desktop",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Call Analysis OS · B"
+      ],
       "screenshot": "desktop-public-signup.png"
     },
     {
       "persona": "admin",
       "path": "/overview",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Monday, 2 November 2, quality, resolution"
+      ],
       "screenshot": "mobile-admin-overview.png"
     },
     {
@@ -328,8 +416,10 @@
       "persona": "admin",
       "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Coaching, Sentiment, Compliance risk"
+      ],
       "screenshot": "mobile-admin-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
     },
     {
@@ -344,80 +434,100 @@
       "persona": "admin",
       "path": "/analytics",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Repeat callers, NRI callers, Systemic issues"
+      ],
       "screenshot": "mobile-admin-analytics.png"
     },
     {
       "persona": "admin",
       "path": "/classification",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Most common topic, Top topics, Common sub-topics"
+      ],
       "screenshot": "mobile-admin-classification.png"
     },
     {
       "persona": "admin",
       "path": "/direction",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Total calls, Inbound, Outbound"
+      ],
       "screenshot": "mobile-admin-direction.png"
     },
     {
       "persona": "admin",
       "path": "/compliance",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Compliance health, ZTP violations, High-risk calls"
+      ],
       "screenshot": "mobile-admin-compliance.png"
     },
     {
       "persona": "admin",
       "path": "/agents",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Active agents, Team quality, Agents with red flag"
+      ],
       "screenshot": "mobile-admin-agents.png"
     },
     {
       "persona": "admin",
       "path": "/agents/1011",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: QA health, quality, resolution"
+      ],
       "screenshot": "mobile-admin-agents_1011.png"
     },
     {
       "persona": "admin",
       "path": "/training",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Open assignments, Overdue, Completed"
+      ],
       "screenshot": "mobile-admin-training.png"
     },
     {
       "persona": "admin",
       "path": "/customers",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Customers, Repeat callers, With a negative call"
+      ],
       "screenshot": "mobile-admin-customers.png"
     },
     {
       "persona": "admin",
       "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Avg quality, Last sentiment, Resolved"
+      ],
       "screenshot": "mobile-admin-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
     },
     {
       "persona": "admin",
       "path": "/sentiment",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Customer mood"
+      ],
       "screenshot": "mobile-admin-sentiment.png"
     },
     {
@@ -440,16 +550,30 @@
       "persona": "admin",
       "path": "/crm",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Connections, Customers on file, Failed syncs (last 1"
+      ],
       "screenshot": "mobile-admin-crm.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/sources",
+      "view": "mobile",
+      "ok": false,
+      "problems": [
+        "text under 12px: Connected dialers, Calls received (late, Failed downloads"
+      ],
+      "screenshot": "mobile-admin-sources.png"
     },
     {
       "persona": "admin",
       "path": "/team",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Users, Active, Roles"
+      ],
       "screenshot": "mobile-admin-team.png"
     },
     {
@@ -480,8 +604,10 @@
       "persona": "executive",
       "path": "/overview",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Monday, 2 November 2, quality, resolution"
+      ],
       "screenshot": "mobile-executive-overview.png"
     },
     {
@@ -496,32 +622,40 @@
       "persona": "executive",
       "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Coaching, Sentiment, Compliance risk"
+      ],
       "screenshot": "mobile-executive-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
     },
     {
       "persona": "executive",
       "path": "/agents/1011",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: QA health, quality, resolution"
+      ],
       "screenshot": "mobile-executive-agents_1011.png"
     },
     {
       "persona": "executive",
       "path": "/training",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Open assignments, Overdue, Completed"
+      ],
       "screenshot": "mobile-executive-training.png"
     },
     {
       "persona": "executive",
       "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Avg quality, Last sentiment, Resolved"
+      ],
       "screenshot": "mobile-executive-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
     },
     {
@@ -544,8 +678,10 @@
       "persona": "public",
       "path": "/login",
       "view": "mobile",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: BUILT ON PUCHO.AI, Quick Fill, Select Role"
+      ],
       "screenshot": "mobile-public-login.png"
     },
     {
@@ -560,248 +696,320 @@
       "persona": "admin",
       "path": "/overview",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-overview.png"
     },
     {
       "persona": "admin",
       "path": "/calls",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-calls.png"
     },
     {
       "persona": "admin",
       "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
     },
     {
       "persona": "admin",
       "path": "/upload",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-upload.png"
     },
     {
       "persona": "admin",
       "path": "/analytics",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-analytics.png"
     },
     {
       "persona": "admin",
       "path": "/classification",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-classification.png"
     },
     {
       "persona": "admin",
       "path": "/direction",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-direction.png"
     },
     {
       "persona": "admin",
       "path": "/compliance",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-compliance.png"
     },
     {
       "persona": "admin",
       "path": "/agents",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-agents.png"
     },
     {
       "persona": "admin",
       "path": "/agents/1011",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-agents_1011.png"
     },
     {
       "persona": "admin",
       "path": "/training",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-training.png"
     },
     {
       "persona": "admin",
       "path": "/customers",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-customers.png"
     },
     {
       "persona": "admin",
       "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
     },
     {
       "persona": "admin",
       "path": "/sentiment",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-sentiment.png"
     },
     {
       "persona": "admin",
       "path": "/company",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-company.png"
     },
     {
       "persona": "admin",
       "path": "/company?tab=rules",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-company_tab_rules.png"
     },
     {
       "persona": "admin",
       "path": "/crm",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-crm.png"
+    },
+    {
+      "persona": "admin",
+      "path": "/sources",
+      "view": "dark",
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
+      "screenshot": "dark-admin-sources.png"
     },
     {
       "persona": "admin",
       "path": "/team",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-team.png"
     },
     {
       "persona": "admin",
       "path": "/settings",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-settings.png"
     },
     {
       "persona": "admin",
       "path": "/notifications",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-notifications.png"
     },
     {
       "persona": "admin",
       "path": "/profile",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-admin-profile.png"
     },
     {
       "persona": "executive",
       "path": "/overview",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-overview.png"
     },
     {
       "persona": "executive",
       "path": "/calls",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-calls.png"
     },
     {
       "persona": "executive",
       "path": "/calls/0650bafa-b101-4775-9304-3ca1a81065c3",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-calls_0650bafa_b101_4775_9304_3ca1a81065c3.png"
     },
     {
       "persona": "executive",
       "path": "/agents/1011",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-agents_1011.png"
     },
     {
       "persona": "executive",
       "path": "/training",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-training.png"
     },
     {
       "persona": "executive",
       "path": "/customers/dbeb92bb-259d-455c-ac72-d90045992b02",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-customers_dbeb92bb_259d_455c_ac72_d90045992b02.png"
     },
     {
       "persona": "executive",
       "path": "/company",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-company.png"
     },
     {
       "persona": "executive",
       "path": "/profile",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: CALL ANALYSIS OS, Call analysis, Agent training"
+      ],
       "screenshot": "dark-executive-profile.png"
     },
     {
       "persona": "public",
       "path": "/login",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Quick Fill, Select Role, Admin"
+      ],
       "screenshot": "dark-public-login.png"
     },
     {
       "persona": "public",
       "path": "/signup",
       "view": "dark",
-      "ok": true,
-      "problems": [],
+      "ok": false,
+      "problems": [
+        "text under 12px: Call Analysis OS · B"
+      ],
       "screenshot": "dark-public-signup.png"
     }
   ]

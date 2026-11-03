@@ -25,8 +25,8 @@ check('new workspace has no calls and none of the demo orgs’ agents', txt.incl
 await page.goto(`${BASE}/company?tab=rules`, { waitUntil: 'networkidle' });
 check('healthcare template rules were created', (await page.innerText('main')).includes('Professional Greeting'));
 // sign out, sign back in
-await page.goto(`${BASE}/overview`, { waitUntil: 'networkidle' }); console.log('menu buttons', await page.locator('button[aria-haspopup=menu]').count(), page.url()); await page.locator('button[aria-haspopup=menu]').first().click(); await page.waitForTimeout(500); await page.screenshot({ path: '../evidence/signout-debug.png' }); await page.getByRole('menuitem', { name: 'Sign out' }).click(); await page.waitForURL(/\/login/);
-await page.fill('#email', email); await page.fill('#password', pw); await page.click('button[type=submit]'); await page.waitForURL(/\/overview/, { timeout: 60000 }).catch(() => {});
+await page.goto(`${BASE}/overview`, { waitUntil: 'networkidle' }); await page.locator('button[aria-haspopup=menu]').first().click(); await page.waitForTimeout(500); await page.getByRole('menuitem', { name: 'Sign out' }).click(); await page.waitForURL(/\/login/);
+await page.fill('input[type=email]', email); await page.fill('input[type=password]', pw); await page.click('button[type=submit]'); await page.waitForURL(/\/overview/, { timeout: 60000 }).catch(() => {});
 check('the new owner can sign out and back in', page.url().includes('/overview'));
 await page.goto(`${BASE}/signup`, { waitUntil: 'networkidle' });
 await b.close();

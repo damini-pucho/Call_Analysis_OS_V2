@@ -9,6 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // what the browser learns about the person: display fields and permission codes (the server re-checks every one)
   const dto = { id: user.id, name: user.name, email: user.email, orgName: user.orgName, orgSlug: user.orgSlug, industry: user.industry,
     roleKey: user.roleKey, roleName: user.roleName, scope: user.scope, permissions: user.permissions, isPlatform: user.isPlatform, agentCode: user.agentCode,
+    trainingLocked: user.trainingLocked,
     config: org?.config || {} };
   return (
     <AppProviders user={dto}>

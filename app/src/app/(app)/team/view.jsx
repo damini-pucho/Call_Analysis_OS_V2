@@ -122,8 +122,8 @@ function AgentsTab({ agents, users, groups }) {
   return (
     <Card title="Agents" sub="The agent codes on recordings. Link a code to a user so they see their own calls." pad={false} action={can('agents.edit') && <Button size="sm" variant="primary" onClick={() => setEdit({})}><Plus size={14} />Add agent</Button>}>
       {!agents.length ? <Empty icon={Headset} title="No agents yet">Agents are created from the agent code on uploaded recordings, or added here.</Empty> : (
-        <div className="mt-3 overflow-x-auto"><table className="table"><thead><tr><th>Code</th><th>Name</th><th>Linked user</th><th>Group</th><th>Supervisor</th><th>Status</th><th /></tr></thead>
-          <tbody>{agents.map((a) => <tr key={a.id}><td className="font-mono font-medium">{a.agent_code}</td><td>{a.agent_name}</td><td>{users.find((u) => u.id === a.user_id)?.name || <span className="text-ink-3">—</span>}</td><td>{a.group_name || '—'}</td><td>{a.supervisor_name || '—'}</td><td><Badge tone={a.is_active ? 'ok' : null}>{a.is_active ? 'Active' : 'Inactive'}</Badge></td><td className="text-right">{can('agents.edit') && <button className="icon-btn" onClick={() => setEdit(a)} aria-label="Edit agent"><Pencil size={15} /></button>}</td></tr>)}</tbody></table></div>
+        <div className="mt-3 overflow-x-auto"><table className="table"><thead><tr><th>Code</th><th>Name</th><th>Dialer IDs</th><th>Linked user</th><th>Group</th><th>Supervisor</th><th>Status</th><th /></tr></thead>
+          <tbody>{agents.map((a) => <tr key={a.id}><td className="font-mono font-medium">{a.agent_code}</td><td>{a.agent_name}</td><td className="font-mono text-[12px] text-ink-3">{(a.dialer_ids || []).join(', ') || '—'}</td><td>{users.find((u) => u.id === a.user_id)?.name || <span className="text-ink-3">—</span>}</td><td>{a.group_name || '—'}</td><td>{a.supervisor_name || '—'}</td><td><Badge tone={a.is_active ? 'ok' : null}>{a.is_active ? 'Active' : 'Inactive'}</Badge></td><td className="text-right">{can('agents.edit') && <button className="icon-btn" onClick={() => setEdit(a)} aria-label="Edit agent"><Pencil size={15} /></button>}</td></tr>)}</tbody></table></div>
       )}
       <AgentModal a={edit} onClose={() => setEdit(null)} users={users} groups={groups} />
     </Card>
@@ -133,10 +133,10 @@ function AgentsTab({ agents, users, groups }) {
 function AgentModal({ a, onClose, users, groups }) {
   const { busy, run } = useRun(); const [f, setF] = useState(null); const [errs, setErrs] = useState({});
   const key = a ? a.id || 'new' : null;
-  if (a && f?.__k !== key) setF({ __k: key, agent_code: a.agent_code || '', agent_name: a.agent_name || '', email: a.email || '', user_id: a.user_id || '', group_id: a.group_id || '', supervisor_id: a.supervisor_id || '', is_active: a.is_active ?? true });
+  if (a && f?.__k !== key) setF({ __k: key, agent_code: a.agent_code || '', agent_name: a.agent_name || '', email: a.email || '', user_id: a.user_id || '', group_id: a.group_id || '', supervisor_id: a.supervisor_id || '', is_active: a.is_active ?? true, dialer_ids: (a.dialer_ids || []).join(', ') });
   if (!a || !f) return null;
   const close = () => { setF(null); setErrs({}); onClose(); };
-  const save = async () => { const { __k, ...d } = f; const r = await run(() => saveAgent({ ...(a.id ? { id: a.id } : {}), ...d }), close); if (!r.ok) setErrs(r.fields || {}); };
+  const save = async () => { const { __k, ...d } = f; const r = await run(() => saveAgent({ ...(a.id ? { id: a.id } : {}), ...d, dialer_ids: d.dialer_ids.split(',').map((x) => x.trim()).filter(Boolean) }), close); if (!r.ok) setErrs(r.fields || {}); };
   return (
     <Modal open onClose={close} title={a.id ? `Edit agent ${a.agent_code}` : 'Add agent'} footer={<><Button onClick={close}>Cancel</Button><Button variant="primary" loading={busy} onClick={save}>Save</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -146,6 +146,7 @@ function AgentModal({ a, onClose, users, groups }) {
         <Field label="Email" error={errs.email}><Input value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
         <Field label="Group"><Select value={f.group_id} onChange={(e) => setF({ ...f, group_id: e.target.value })} placeholder="No group" options={groups.map((g) => ({ value: g.id, label: g.name }))} /></Field>
         <Field label="Supervisor"><Select value={f.supervisor_id} onChange={(e) => setF({ ...f, supervisor_id: e.target.value })} placeholder="None" options={users.filter((u) => u.scope !== 'own').map((u) => ({ value: u.id, label: u.name }))} /></Field>
+        <Field label="Dialer IDs" className="sm:col-span-2" hint="How your calling platform names this agent — extension, agent number or login, comma-separated (Dialer integration)" error={errs.dialer_ids}><Input value={f.dialer_ids} onChange={(e) => setF({ ...f, dialer_ids: e.target.value })} placeholder="e.g. 201, 9876500011" /></Field>
         <div className="flex items-center justify-between rounded-xl border border-line p-3 text-[14px] sm:col-span-2"><span>Active</span><Switch checked={f.is_active} onChange={(v) => setF({ ...f, is_active: v })} label="Active" /></div>
       </div>
     </Modal>

@@ -1,0 +1,192 @@
+{
+  "when": "2026-11-02T10:53:41.715Z",
+  "passed": 37,
+  "failed": 0,
+  "results": [
+    {
+      "name": "assigned agent: dashboard redirects to Training",
+      "ok": true,
+      "detail": "/training?locked=1"
+    },
+    {
+      "name": "assigned agent: call pages are locked too",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "assigned agent: Training page opens with the lock notice",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "assigned agent: Profile still opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "assigned agent: recordings API refuses (423)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "assigned agent: sidebar shows only Training",
+      "ok": true,
+      "detail": "Training"
+    },
+    {
+      "name": "agent cannot complete their own training (no Completed option)",
+      "ok": true,
+      "detail": "Assigned,In Progress"
+    },
+    {
+      "name": "agent records progress and notes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard stays locked while In Progress",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "team leader marks it Done (recorded as completed by them)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "agent dashboard unlocked after Done",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "agent is told their dashboard is unlocked",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Connect redirects to Zoho with offline access and the CRM scopes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "a tampered OAuth state is refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "a non-Zoho accounts server is refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the callback only completes for the admin who started it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Zoho connected; tokens stored encrypted, account recorded",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "customer profile shows the Zoho contact, deals, calls and notes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the customer is linked to the Zoho record",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Import Contacts creates customer profiles from Zoho (no-phone records skipped)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "an analysed call is written to Zoho as a Note on the contact",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "…and logged as a Call activity linked to the contact",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the Zoho write-back is in the sync log",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Zoho calls carry the OAuth token header",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "dialer webhook with a wrong token → 401",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Exotel-style form webhook accepted (202)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "recording downloaded and stored as a call — no manual upload",
+      "ok": true,
+      "detail": "20261102-CAmvz5505z_9812345678_1034_SUPPORT-auto.mp3"
+    },
+    {
+      "name": "dialer ID 201 mapped to agent 1034; customer, direction, duration, campaign filled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "event log keeps field names only, not values",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the dialer retrying the same call is ignored",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "GET passthru works; an unknown dialer ID becomes a new agent to map",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "an unanswered call (no recording) is skipped, not faked",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "a non-http recording URL is refused (SSRF guard)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "a recording host needing credentials fails clearly without them",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "generic source: multipart with the recording file (Bearer token) is ingested",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Dialer integration page opens for an admin",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "…and is denied to an agent",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

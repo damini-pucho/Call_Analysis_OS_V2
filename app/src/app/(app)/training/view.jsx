@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { PageHeader, Card, Kpi, Tabs, Badge, Empty, Avatar, Button, Modal, Field, Input, Textarea, Select, BarList, Progress, cn } from '@/components/ui';
 import { useCan, useUser } from '@/components/providers';
 import AssignTraining from '@/components/AssignTraining';
-import { updateAssignment, deleteAssignment, saveModule, deleteModule } from '@/app/actions/training';
+import { updateAssignment, deleteAssignment, saveModule, deleteModule, markTrainingDone } from '@/app/actions/training';
 import * as M from '@/lib/metrics';
 
 export default function TrainingView({ calls: all, agents, modules, assignments }) {
@@ -17,7 +17,7 @@ export default function TrainingView({ calls: all, agents, modules, assignments 
   const calls = all.filter(M.isProcessed);
   const self = user.scope === 'own';
   const [tab, setTab] = useState(self ? 'mine' : 'gaps');
-  const [assign, setAssign] = useState(null); const [mod, setMod] = useState(null); const [upd, setUpd] = useState(null);
+  const [assign, setAssign] = useState(null); const [mod, setMod] = useState(null); const [upd, setUpd] = useState(null); const [doneFor, setDoneFor] = useState(null);
   const stats = useMemo(() => M.agentStats(calls, agents), [calls, agents]);
   const gapsByAgent = useMemo(() => stats.map((a) => ({ ...a, gaps: M.knowledgeGaps(calls.filter((c) => c.agent_code === a.code)) })).sort((a, b) => (a.score ?? 0) - (b.score ?? 0)), [stats, calls]);
   const orgGaps = useMemo(() => M.knowledgeGaps(calls), [calls]);
@@ -86,12 +86,14 @@ export default function TrainingView({ calls: all, agents, modules, assignments 
               <tbody>{assignments.map((t) => { const late = t.status !== 'Completed' && t.due_date && t.due_date < new Date().toISOString().slice(0, 10); return (
                 <tr key={t.id}>
                   <td><div className="font-medium text-ink">{t.agent_name || t.agent_code}</div><div className="text-[12px] text-ink-3">{t.agent_code}</div></td>
-                  <td className="max-w-[240px]"><div className="truncate font-medium">{t.title}</div>{t.agent_notes && <div className="truncate text-[12px] text-ink-3">“{t.agent_notes}”</div>}</td>
+                  <td className="max-w-[240px]"><div className="truncate font-medium">{t.title}</div>{t.agent_notes && <div className="truncate text-[12px] text-ink-3">Agent: “{t.agent_notes}”</div>}{t.review_note && <div className="truncate text-[12px] text-ok-text">Review: “{t.review_note}”</div>}
+                    {self && t.module_id && t.status !== 'Completed' && <ModuleInline m={modules.find((m) => m.id === t.module_id)} />}</td>
                   <td className="max-w-[220px] truncate text-ink-3">{t.gap || '—'}{t.source_call_id && <Link href={`/calls/${t.source_call_id}`} className="ml-1 text-ink-2 hover:underline">call</Link>}</td>
                   <td className={cn('whitespace-nowrap tabular-nums', late && 'text-bad-text')}>{t.due_date || '—'}{late && ' · overdue'}</td>
-                  <td><Badge>{t.status}</Badge></td><td className="text-ink-3">{t.assigned_by_name || '—'}</td>
+                  <td><Badge>{t.status === 'Completed' ? 'Done' : t.status}</Badge>{t.status === 'Completed' ? <div className="mt-1 text-[12px] text-ink-3">by {t.completed_by_name || '—'}{t.completed_at ? ` · ${new Date(t.completed_at).toLocaleDateString('en-GB')}` : ''}</div> : <div className="mt-1 text-[12px] text-warn-text">{t.agent_user_id ? 'Dashboard locked' : 'Awaiting review'}</div>}</td><td className="text-ink-3">{t.assigned_by_name || '—'}</td>
                   <td className="whitespace-nowrap text-right">
-                    <Button size="sm" variant="ghost" onClick={() => setUpd(t)}>Update</Button>
+                    {t.status !== 'Completed' && can('training.assign') && t.agent_user_id !== user.id && <Button size="sm" variant="primary" onClick={() => setDoneFor(t)}><CheckCircle2 size={14} />Done</Button>}
+                    {t.status !== 'Completed' && <Button size="sm" variant="ghost" onClick={() => setUpd(t)}>Update</Button>}
                     {can('training.assign') && <button className="icon-btn" aria-label="Remove assignment" onClick={() => confirm('Remove this assignment?') && run(() => deleteAssignment({ id: t.id }))}><Trash2 size={15} /></button>}
                   </td>
                 </tr>); })}</tbody></table></div>
@@ -120,6 +122,7 @@ export default function TrainingView({ calls: all, agents, modules, assignments 
       <AssignTraining open={!!assign} onClose={() => setAssign(null)} preset={assign} modules={modules} agents={agents} />
       <ModuleModal mod={mod} onClose={() => setMod(null)} />
       <UpdateModal t={upd} onClose={() => setUpd(null)} />
+      <DoneModal t={doneFor} onClose={() => setDoneFor(null)} />
     </div>
   );
 }
@@ -160,8 +163,39 @@ function UpdateModal({ t, onClose }) {
   return (
     <Modal open={!!t} onClose={() => { setForId(null); onClose(); }} title="Update training" sub={t?.title} footer={<><Button onClick={() => { setForId(null); onClose(); }}>Cancel</Button><Button variant="primary" onClick={save} loading={busy}>Save</Button></>}>
       <div className="space-y-4">
-        <Field label="Status"><Select value={status} onChange={(e) => setStatus(e.target.value)} options={['Assigned', 'In Progress', 'Completed']} /></Field>
-        <Field label="Notes" hint="What was practised, what's left"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></Field>
+        <Field label="Status"><Select value={status} onChange={(e) => setStatus(e.target.value)} options={['Assigned', 'In Progress']} /></Field>
+        <p className="text-[13px] text-ink-3">There is no test. When the training is finished, your team leader reviews it and marks it Done — that is what completes it.</p>
+        <Field label="Notes for your team leader" hint="What was practised, what's left"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></Field>
+      </div>
+    </Modal>
+  );
+}
+
+function ModuleInline({ m }) {
+  if (!m) return null;
+  return (
+    <details className="mt-1 max-w-[420px] whitespace-normal text-[12px] text-ink-2">
+      <summary className="cursor-pointer text-ink-3">Open module: {m.title}</summary>
+      {m.content && <p className="mt-1 whitespace-pre-wrap">{m.content}</p>}
+      {m.resource_url && <a href={m.resource_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-ink hover:underline">Resource <ExternalLink size={11} /></a>}
+    </details>
+  );
+}
+
+/** The team leader's review: marks the training Done; the agent's dashboard unlocks when no training is left open. */
+function DoneModal({ t, onClose }) {
+  const router = useRouter();
+  const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [forId, setForId] = useState(null);
+  if (t && forId !== t.id) { setForId(t.id); setNote(''); }
+  const close = () => { setForId(null); onClose(); };
+  const save = async () => { setBusy(true); const r = await markTrainingDone({ id: t.id, review_note: note }); setBusy(false); if (!r.ok) { toast.error(r.message); return; } toast.success(r.message); close(); router.refresh(); };
+  return (
+    <Modal open={!!t} onClose={close} title="Mark training Done" sub={t ? `${t.title} · ${t.agent_name || t.agent_code}` : ''}
+      footer={<><Button onClick={close}>Cancel</Button><Button variant="primary" onClick={save} loading={busy}><CheckCircle2 size={15} />Mark Done</Button></>}>
+      <div className="space-y-4">
+        {t?.agent_notes && <div className="rounded-xl bg-surface-2 p-3 text-[13px] text-ink-2"><span className="label mb-1 block">Agent's notes</span>{t.agent_notes}</div>}
+        <p className="text-[14px] text-ink-2">Confirm you have reviewed this training with the agent.{t?.agent_user_id ? ' If it is their last open training, their dashboard unlocks immediately.' : ''}</p>
+        <Field label="Review note" hint="Optional — the agent sees it"><Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} className="min-h-[72px]" /></Field>
       </div>
     </Modal>
   );

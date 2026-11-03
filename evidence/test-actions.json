@@ -1,6 +1,6 @@
 {
-  "when": "2026-10-30T10:09:03.024Z",
-  "passed": 13,
+  "when": "2026-11-03T10:23:28.243Z",
+  "passed": 14,
   "failed": 0,
   "results": [
     {
@@ -34,12 +34,17 @@
       "detail": "not_connected"
     },
     {
-      "name": "the agent marks their training completed",
+      "name": "the agent cannot mark training completed themselves",
+      "ok": true,
+      "detail": "Assigned,In Progress"
+    },
+    {
+      "name": "the manager marks the training Done",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "the assigner is notified of completion",
+      "name": "the agent is notified it is done",
       "ok": true,
       "detail": ""
     },

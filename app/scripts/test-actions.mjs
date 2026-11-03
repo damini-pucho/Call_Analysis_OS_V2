@@ -59,14 +59,17 @@ const notif = await one("SELECT n.email_status FROM notifications n JOIN users u
 check('training assigned to an agent', !!asg);
 check('the agent gets an in-app notification (email marked not connected)', notif?.email_status === 'not_connected', notif?.email_status);
 
-// 4. the agent completes it → the assigner is notified
+// 4. (v2.1) the agent cannot complete it; the assigning manager reviews and marks it Done → the agent is told
 const E = await login('anurag.mehta@sahyog.demo');
 await E.page.goto(`${BASE}/training`, { waitUntil: 'networkidle' });
 await E.page.getByRole('row', { name: new RegExp(`QA training ${stamp}`) }).getByRole('button', { name: 'Update' }).click();
-await E.page.getByRole('dialog').getByLabel('Status').selectOption('Completed'); await E.page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
-await E.page.waitForTimeout(2500);
-check('the agent marks their training completed', (await one('SELECT status FROM training_assignments WHERE id = $1', [asg?.id]))?.status === 'Completed');
-check('the assigner is notified of completion', !!(await one("SELECT 1 FROM notifications WHERE user_id = (SELECT id FROM users WHERE email = 'admin@sahyog.demo') AND title = $1", [`Training completed: QA training ${stamp}`])));
+const agentOpts = await E.page.getByRole('dialog').getByLabel('Status').locator('option').allInnerTexts();
+check('the agent cannot mark training completed themselves', !agentOpts.includes('Completed'), agentOpts.join(','));
+await p.goto(`${BASE}/training`, { waitUntil: 'networkidle' }); await p.getByRole('tab', { name: /Assignments/ }).click();
+await p.getByRole('row', { name: new RegExp(`QA training ${stamp}`) }).getByRole('button', { name: 'Done' }).click();
+await p.getByRole('dialog').getByRole('button', { name: 'Mark Done' }).click();
+check('the manager marks the training Done', (await until("SELECT status FROM training_assignments WHERE id = $1 AND status = 'Completed'", [asg?.id]))?.status === 'Completed');
+check('the agent is notified it is done', !!(await until("SELECT 1 FROM notifications WHERE user_id = (SELECT id FROM users WHERE email = 'anurag.mehta@sahyog.demo') AND title = $1", [`Training done: QA training ${stamp}`])));
 
 // 5. company profile: add a scoring rule, upload an SOP (stored; extraction flow not connected)
 await p.goto(`${BASE}/company?tab=rules`, { waitUntil: 'networkidle' });

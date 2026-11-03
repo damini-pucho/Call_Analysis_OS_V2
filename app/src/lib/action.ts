@@ -2,7 +2,7 @@
 // Identity and organisation come from the session, never from the payload.
 import 'server-only';
 import { z } from 'zod';
-import { currentUser, type SessionUser } from './auth';
+import { currentUser, lockBlocks, type SessionUser } from './auth';
 import { withOrg, type Db } from './db';
 
 export type ActionResult<T = unknown> = { ok: true; data?: T; message?: string } | { ok: false; message: string; fields?: Partial<Record<string, string>> };
@@ -19,6 +19,7 @@ export async function guard<S extends z.ZodTypeAny, T>(permission: string | stri
   if (!user) return { ok: false, message: 'Your session has ended. Sign in again.' };
   const perms = permission == null ? [] : Array.isArray(permission) ? permission : [permission];
   if (perms.length && !perms.some((p) => user.permissions.includes(p))) return { ok: false, message: 'Your role does not allow this action.' };
+  if (lockBlocks(user, perms)) return { ok: false, message: 'Your dashboard is locked until your team leader marks your training Done.' };
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, message: 'Please fix the highlighted fields.', fields: fieldErrors(parsed.error) };
   try {

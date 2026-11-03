@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const u = await currentUser();
   if (!u) return NextResponse.json({ ok: false }, { status: 401 });
+  if (u.trainingLocked) return NextResponse.json({ ok: false, message: 'Locked until your training is marked Done' }, { status: 423 });
   const ids = (req.nextUrl.searchParams.get('ids') || '').split(',').filter(isUuid).slice(0, 500);
   if (!ids.length) return NextResponse.json({ ok: true, calls: [] });
   const rows = await withOrg(u.orgId, async (db) => {

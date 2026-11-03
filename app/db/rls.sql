@@ -8,7 +8,8 @@ DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['roles','users','sessions','groups','agents','campaigns','files','customers','calls',
                            'coaching_notes','company_documents','sop_rules','training_modules','training_assignments',
-                           'notifications','crm_connections','crm_sync_log','flow_runs','audit_log']
+                           'notifications','crm_connections','crm_sync_log','flow_runs','audit_log',
+                           'call_sources','ingest_events']
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);

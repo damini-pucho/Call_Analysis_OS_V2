@@ -19,6 +19,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   } else {
     const u = await currentUser();
     if (!u) return new NextResponse('Sign in required', { status: 401 });
+    if (u.trainingLocked) return new NextResponse('Locked until your training is marked Done', { status: 423 });
     file = await withOrg(u.orgId, async (db) => {
       const f = await db.one<any>('SELECT * FROM files WHERE id = $1 AND org_id = $2', [id, u.orgId]);
       if (!f) return null;

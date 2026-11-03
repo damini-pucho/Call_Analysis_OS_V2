@@ -27,7 +27,7 @@ const cust = (await db.query("SELECT cu.id FROM customers cu JOIN organizations 
 
 const ADMIN_PAGES = ['/overview', '/calls', `/calls/${call}`, '/upload', '/analytics', '/analytics?tab=trends', '/analytics?tab=sop', '/analytics?tab=language', '/classification', '/direction', '/compliance',
   '/agents', '/agents/1011', '/training', '/customers', `/customers/${cust}`, '/sentiment', '/company', '/company?tab=config', '/company?tab=documents', '/company?tab=rules', '/company?tab=campaigns',
-  '/crm', '/team', '/settings', '/notifications', '/profile'];
+  '/crm', '/sources', '/team', '/settings', '/notifications', '/profile'];
 const PERSONAS = [
   { key: 'admin', email: 'admin@sahyog.demo', pages: ADMIN_PAGES },
   { key: 'executive', email: 'dipti.shah@sahyog.demo', pages: ['/overview', '/calls', `/calls/${call}`, '/agents/1011', '/training', `/customers/${cust}`, '/company', '/profile'] },

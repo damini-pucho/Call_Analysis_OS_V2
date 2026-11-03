@@ -12,12 +12,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, colorScheme: 'light dark', themeColor: '#141413' };
 export const dynamic = 'force-dynamic';
 
-// Resolves light / dark before first paint (localStorage → cookie → system), so a dark user never sees a light frame.
+// Resolves theme before first paint, defaulting to clean light theme
 const THEME_SCRIPT = `(function(){try{var d=document.documentElement,m=null;try{m=localStorage.getItem('pucho-theme')}catch(e){}
 if(!m){var c=document.cookie.match(/(?:^|; )pucho-theme=(light|dark|system)/);m=c?c[1]:null}
-if(m!=='light'&&m!=='dark')m='system';
-var r=m==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):m;
-d.setAttribute('data-theme',r);d.setAttribute('data-theme-mode',m)}catch(e){}})();`;
+if(!m||m==='system')m='light';
+d.setAttribute('data-theme',m);d.setAttribute('data-theme-mode',m)}catch(e){}})();`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const mode = (await cookies()).get('pucho-theme')?.value;

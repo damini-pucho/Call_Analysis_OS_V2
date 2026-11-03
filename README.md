@@ -12,10 +12,11 @@ framer-motion · Pucho Studio flows for speech-to-text and AI.
 |---|---|---|
 | Overview | `/overview` | QA health (35/25/15/25, weights per org), stats, classification, IVR feedback, risk alerts, needs attention |
 | Call Analysis | `/calls`, `/calls/:id`, `/upload`, `/analytics`, `/classification`, `/direction`, `/compliance` | Recordings, transcripts (PII-masked), summaries, 15 KPIs, 7 SOPs, tags, coaching notes, analytics |
-| Agent Training | `/agents`, `/agents/:code`, `/training` | Agent scores, knowledge gaps, improvement areas, training assignments + modules, manager notifications |
+| Agent Training | `/agents`, `/agents/:code`, `/training` | Agent scores, knowledge gaps, improvement areas, training assignments + modules, manager notifications; an assigned agent's dashboard stays locked until their team leader marks the training Done |
 | Customer Profile | `/customers`, `/customers/:id`, `/sentiment` | Callers built from recordings / CRM, call history with recordings and analysis, sentiment |
 | Company Profile | `/company` | Details, logo, industry configuration, SOP & policy uploads → extracted rules, scoring rules, campaigns |
-| CRM Integration | `/crm` | Signed outbound webhooks, inbound customer endpoint, CSV import, sync log |
+| CRM Integration | `/crm` | Zoho CRM (OAuth; contact lookup, import, call notes + activities), signed outbound webhooks, inbound customer endpoint, CSV import, sync log |
+| Dialer integration | `/sources` | Recordings arrive from Exotel / Ozonetel / Smartflo / Knowlarity / MyOperator / any webhook and are analysed without upload |
 | Admin | `/team`, `/settings`, `/notifications`, `/profile`, `/platform` | Users, agents, org tree, groups, roles & permission matrix, flow wiring, platform console |
 
 ## SaaS model
@@ -62,7 +63,8 @@ cd app
 node scripts/test-api.mjs       # 41 checks: isolation, scope, RBAC, upload, ZIP, write-back, CRM, RLS, argon2id
 node scripts/test-actions.mjs   # 13 checks: the main writes through the real UI
 node scripts/test-signup.mjs    # 7 checks: a new organisation end-to-end
-node scripts/test-ui.mjs        # 100 page checks: every page × persona at 1440px, 390px and dark
+node scripts/test-v21.mjs       # 37 checks: training lock + Done, Zoho (mock), dialer ingestion (see docs/v2.1-changes.md)
+node scripts/test-ui.mjs        # 103 page checks: every page × persona at 1440px, 390px and dark
 ```
 
-See `docs/` for the intake decisions, the V1 feature inventory, security notes and known gaps.
+V2.1 changes: `docs/v2.1-changes.md`. See `docs/` for the intake decisions, the V1 feature inventory, security notes and known gaps.

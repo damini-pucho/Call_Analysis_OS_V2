@@ -8,7 +8,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   LayoutDashboard, PhoneCall, UploadCloud, BarChart3, Layers, ArrowLeftRight, ShieldCheck, Users, GraduationCap, Contact, Smile,
   Building2, Plug, UserCog, Settings, Globe, Bell, Search, Menu, X, Sun, Moon, Monitor, LogOut, UserCircle, PanelLeftClose, PanelLeftOpen,
-  Play, Pause, SkipBack, SkipForward, Volume2,
+  Play, Pause, SkipBack, SkipForward, Volume2, Lock, Radio,
 } from 'lucide-react';
 import { useUser, usePlayer } from './providers';
 import { Avatar, cn } from './ui';
@@ -20,6 +20,7 @@ export const NAV = [
   { group: 'Call analysis', items: [
     { href: '/calls', label: 'Calls', icon: PhoneCall, perm: 'calls.view' },
     { href: '/upload', label: 'Upload & analyse', icon: UploadCloud, perm: 'upload.analyze' },
+    { href: '/sources', label: 'Dialer integration', icon: Radio, perm: 'upload.analyze' },
     { href: '/analytics', label: 'Analytics', icon: BarChart3, perm: 'analytics.view' },
     { href: '/classification', label: 'Classification', icon: Layers, perm: 'classification.view' },
     { href: '/direction', label: 'Inbound / outbound', icon: ArrowLeftRight, perm: 'inbound_outbound.view' },
@@ -47,6 +48,8 @@ export const NAV = [
 function allowed(user, perm) {
   if (perm === 'platform') return !!user?.isPlatform;
   const list = Array.isArray(perm) ? perm : [perm];
+  // a training-locked agent sees only Training until their team leader marks it Done (the server enforces the same)
+  if (user?.trainingLocked && !list.includes('training.view')) return false;
   return list.some((p) => user?.permissions?.includes(p));
 }
 
@@ -69,25 +72,40 @@ function ThemeToggle({ compact }) {
 function NavList({ user, collapsed, onNavigate }) {
   const path = usePathname();
   return (
-    <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Main">
+    <nav className="flex-1 pr-3 mt-2 space-y-1 overflow-y-auto" aria-label="Main">
       {NAV.map((g, gi) => {
         const items = g.items.filter((i) => allowed(user, i.perm));
         if (!items.length) return null;
         return (
           <div key={gi} className="mt-4 first:mt-2">
-            {g.group && !collapsed && <div className="label mb-1 px-3">{g.group}</div>}
-            {g.group && collapsed && <div className="mx-3 mb-2 border-t border-nav-line" />}
-            <ul className="space-y-0.5">
+            {g.group && !collapsed && (
+              <div className="px-5 py-1.5 text-[10px] font-bold text-gray-400 tracking-widest uppercase">
+                {g.group}
+              </div>
+            )}
+            {g.group && collapsed && <div className="mx-3 mb-2 border-t border-gray-100" />}
+            <ul className="space-y-1">
               {items.map((i) => {
                 const active = path === i.href || path.startsWith(`${i.href}/`);
                 return (
                   <li key={i.href}>
-                    <Link href={i.href} onClick={onNavigate} title={collapsed ? i.label : undefined} aria-current={active ? 'page' : undefined}
-                      className={cn('flex items-center gap-3 rounded-[12px] px-3 text-[14px] transition-colors', collapsed && 'justify-center px-0',
-                        active ? 'bg-nav-active font-medium text-nav-ink' : 'text-nav-2 hover:bg-nav-hover hover:text-nav-ink')}
-                      style={{ height: 'var(--nav-row-h)' }}>
-                      <i.icon size={17} className="shrink-0" aria-hidden />
-                      {!collapsed && <span className="truncate">{i.label}</span>}
+                    <Link
+                      href={i.href}
+                      onClick={onNavigate}
+                      title={collapsed ? i.label : undefined}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'flex items-center gap-3 pl-5 pr-3 py-2.5 rounded-r-full transition-all text-[14px] font-medium whitespace-nowrap overflow-hidden relative group',
+                        collapsed && 'justify-center pl-0 rounded-xl',
+                        active
+                          ? 'bg-gradient-to-r from-[#7C4DFF] to-[#6C38FF] font-semibold text-white shadow-md'
+                          : 'text-gray-600 hover:bg-purple-50 hover:text-[#7C4DFF]'
+                      )}
+                      style={{ height: 'var(--nav-row-h)' }}
+                    >
+                      <i.icon size={18} className={cn('shrink-0 transition-colors', active ? 'text-white' : 'text-gray-400 group-hover:text-[#7C4DFF]')} aria-hidden />
+                      {!collapsed && <span className="flex-1 truncate">{i.label}</span>}
+                      {active && !collapsed && <div className="w-2 h-2 rounded-full bg-white absolute right-4 shadow-sm" />}
                     </Link>
                   </li>
                 );
@@ -104,20 +122,25 @@ function AccountMenu({ user, collapsed, avatarSrc }) {
   const [open, setOpen] = useState(false);
   useEffect(() => { if (!open) return; const h = (e) => e.key === 'Escape' && setOpen(false); window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h); }, [open]);
   return (
-    <div className="relative border-t border-nav-line p-3">
+    <div className="relative border-t border-gray-100 p-3">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu"
-        className={cn('flex w-full items-center gap-3 rounded-[12px] p-2 text-left hover:bg-nav-hover', collapsed && 'justify-center')}>
-        <Avatar name={user.name} size={32} src={avatarSrc} />
-        {!collapsed && <span className="min-w-0 flex-1"><span className="block truncate text-[14px] font-medium text-nav-ink">{user.name}</span><span className="block truncate text-[12px] text-nav-2">{user.roleName} · {user.orgName}</span></span>}
+        className={cn('flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-purple-50 transition-colors', collapsed && 'justify-center')}>
+        <Avatar name={user.name} size={34} src={avatarSrc} className="bg-purple-100 text-[#7C4DFF] font-bold ring-2 ring-purple-200/50" />
+        {!collapsed && (
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-gray-900 leading-tight">{user.name}</span>
+            <span className="block truncate text-[11px] font-semibold text-gray-500">{user.roleName} · {user.orgName}</span>
+          </span>
+        )}
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div role="menu" className="absolute bottom-full left-3 z-50 mb-2 w-60 rounded-2xl border border-line bg-surface p-1.5 shadow-float">
-            <div className="px-3 py-2"><div className="truncate text-[13px] font-medium text-ink">{user.email}</div><div className="truncate text-[12px] text-ink-3">{user.orgName}</div></div>
-            <Link role="menuitem" href="/profile" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-ink-2 hover:bg-surface-2 hover:text-ink"><UserCircle size={16} />Profile & security</Link>
-            <Link role="menuitem" href="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-ink-2 hover:bg-surface-2 hover:text-ink"><Bell size={16} />Notifications</Link>
-            <form action={signOutAction}><button role="menuitem" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-ink-2 hover:bg-surface-2 hover:text-ink"><LogOut size={16} />Sign out</button></form>
+          <div role="menu" className="absolute bottom-full left-3 z-50 mb-2 w-60 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-lg">
+            <div className="px-3 py-2"><div className="truncate text-[13px] font-semibold text-gray-900">{user.email}</div><div className="truncate text-[12px] text-gray-500">{user.orgName}</div></div>
+            <Link role="menuitem" href="/profile" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-gray-600 hover:bg-purple-50 hover:text-[#7C4DFF]"><UserCircle size={16} />Profile & security</Link>
+            <Link role="menuitem" href="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-gray-600 hover:bg-purple-50 hover:text-[#7C4DFF]"><Bell size={16} />Notifications</Link>
+            <form action={signOutAction}><button role="menuitem" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-gray-600 hover:bg-purple-50 hover:text-[#7C4DFF]"><LogOut size={16} />Sign out</button></form>
           </div>
         </>
       )}
@@ -139,7 +162,7 @@ function PlayerBar() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <button className="icon-btn" onClick={() => p.step(-1)} aria-label="Previous call"><SkipBack size={16} /></button>
-                <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-on" onClick={p.toggle} aria-label={p.playing ? 'Pause' : 'Play'}>{p.playing ? <Pause size={17} /> : <Play size={17} className="ml-0.5" />}</button>
+                <button className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-[#7C4DFF] to-[#6C38FF] text-white shadow-[0_4px_12px_rgba(124,77,255,0.35)] hover:scale-105 transition-all" onClick={p.toggle} aria-label={p.playing ? 'Pause' : 'Play'}>{p.playing ? <Pause size={17} /> : <Play size={17} className="ml-0.5" />}</button>
                 <button className="icon-btn" onClick={() => p.step(1)} aria-label="Next call"><SkipForward size={16} /></button>
               </div>
               <div className="min-w-0 flex-1">
@@ -170,19 +193,24 @@ export default function AppShell({ children, unread, logoSrc, avatarSrc }) {
   useEffect(() => { setMobile(false); }, [path]);
   const toggleRail = () => { setCollapsed((c) => { try { localStorage.setItem('cas-nav', c ? 'full' : 'rail'); } catch {} return !c; }); };
   const brand = useMemo(() => (
-    <div className="flex h-14 shrink-0 items-center gap-2.5 px-5">
-      {logoSrc ? <img src={logoSrc} alt="" className="h-7 w-7 rounded-lg object-cover" /> : <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ink text-[13px] font-semibold text-canvas">{(user.orgName || 'C')[0]}</span>}
-      {!collapsed && <span className="min-w-0"><span className="block truncate text-[14px] font-semibold text-nav-ink">{user.orgName}</span><span className="label block !text-[12px] leading-tight">Call Analysis OS</span></span>}
+    <div className="flex h-16 shrink-0 items-center gap-3 px-5 border-b border-gray-100">
+      <img src="/brand/pucho_logo_official.png" alt="Pucho.ai" className="h-7 w-auto object-contain" />
+      {!collapsed && (
+        <div className="min-w-0">
+          <span className="block truncate text-[13px] font-bold text-gray-900 leading-tight">{user.orgName}</span>
+          <span className="label block !text-[10px] font-black tracking-widest text-[#7C4DFF] leading-tight" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>CALL ANALYSIS OS</span>
+        </div>
+      )}
     </div>
-  ), [collapsed, logoSrc, user.orgName]);
+  ), [collapsed, user.orgName]);
 
   const submitSearch = (e) => { e.preventDefault(); const v = q.trim(); if (v) router.push(`/calls?q=${encodeURIComponent(v)}`); };
 
   return (
     <div className="min-h-screen bg-canvas">
       {/* desktop sidebar */}
-      <aside className={cn('fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-nav-line bg-nav lg:flex', collapsed ? 'w-[var(--rail-w)]' : 'w-[var(--nav-w)]')} style={{ transition: `width ${D.QUICK}s` }}>
-        {collapsed ? <div className="flex h-14 items-center justify-center">{logoSrc ? <img src={logoSrc} alt="" className="h-7 w-7 rounded-lg object-cover" /> : <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ink text-[13px] font-semibold text-canvas">{(user.orgName || 'C')[0]}</span>}</div> : brand}
+      <aside className={cn('fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-gray-200 bg-white shadow-[2px_0_8px_-4px_rgba(0,0,0,0.06)] lg:flex', collapsed ? 'w-[var(--rail-w)]' : 'w-[var(--nav-w)]')} style={{ transition: `width ${D.QUICK}s` }}>
+        {collapsed ? <div className="flex h-16 items-center justify-center border-b border-gray-100"><img src="/brand/pucho_logo_official.png" alt="Pucho.ai" className="h-6 w-auto object-contain" /></div> : brand}
         <NavList user={user} collapsed={collapsed} />
         <AccountMenu user={user} collapsed={collapsed} avatarSrc={avatarSrc} />
       </aside>
@@ -193,7 +221,7 @@ export default function AppShell({ children, unread, logoSrc, avatarSrc }) {
           <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
             <motion.div className="absolute inset-0" style={{ background: 'var(--scrim)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMobile(false)} />
             <motion.aside initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -16, opacity: 0 }} transition={{ duration: D.QUICK, ease: E.OUT }}
-              className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r border-nav-line bg-nav">
+              className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r border-gray-200 bg-white">
               <div className="flex items-center justify-between pr-2">{brand}<button className="icon-btn" onClick={() => setMobile(false)} aria-label="Close menu"><X size={18} /></button></div>
               <NavList user={user} collapsed={false} onNavigate={() => setMobile(false)} />
               <AccountMenu user={user} collapsed={false} avatarSrc={avatarSrc} />
@@ -203,13 +231,13 @@ export default function AppShell({ children, unread, logoSrc, avatarSrc }) {
       </AnimatePresence>
 
       <div className={cn('flex min-h-screen flex-col', collapsed ? 'lg:pl-[var(--rail-w)]' : 'lg:pl-[var(--nav-w)]')}>
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-surface/90 px-3 backdrop-blur sm:px-5" style={{ background: 'color-mix(in srgb, var(--surface) 92%, transparent)' }}>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-gray-200 bg-white/95 px-3 backdrop-blur sm:px-5">
           <button className="icon-btn lg:hidden" onClick={() => setMobile(true)} aria-label="Open menu"><Menu size={19} /></button>
           <button className="icon-btn hidden lg:inline-flex" onClick={toggleRail} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}</button>
           <form onSubmit={submitSearch} className="mx-auto w-full max-w-md" role="search">
             <label className="relative block">
               <span className="sr-only">Search calls</span>
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" aria-hidden />
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search calls by lead ID, mobile, agent…" className="field field-sm !h-9 pl-9" />
             </label>
           </form>
@@ -219,7 +247,16 @@ export default function AppShell({ children, unread, logoSrc, avatarSrc }) {
             {unread > 0 && <span className="absolute right-1 top-1 min-w-[16px] rounded-full bg-accent px-1 text-center text-[12px] font-medium leading-4 text-white">{unread > 9 ? '9+' : unread}</span>}
           </Link>
         </header>
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 pb-28 pt-6 sm:px-6">{children}</main>
+        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 pb-28 pt-6 sm:px-6">
+          {user.trainingLocked && (
+            <div className="callout callout-warn mb-5" role="status">
+              <Lock size={16} className="mt-0.5 shrink-0" aria-hidden />
+              <div><div className="font-medium">Your dashboard is locked while you complete your training</div>
+                <div className="opacity-90">Work through the training assigned to you. Your team leader reviews it and marks it Done — your dashboard opens again after that.</div></div>
+            </div>
+          )}
+          {children}
+        </main>
         <footer className="px-6 pb-6 text-center text-[12px] text-ink-3 no-print">Powered by Pucho.ai</footer>
       </div>
       <PlayerBar />

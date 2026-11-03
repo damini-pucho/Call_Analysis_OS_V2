@@ -379,3 +379,57 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   hits        int NOT NULL DEFAULT 0,
   window_start timestamptz NOT NULL DEFAULT now()
 );
+
+-- ════════════════════════════ v2.1 — training lock · Zoho CRM · dialer recording sources ════════════════════════════
+-- Training: only a team leader / manager marks an assignment Done; until then the agent's dashboard stays locked.
+ALTER TABLE training_assignments ADD COLUMN IF NOT EXISTS completed_by uuid REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE training_assignments ADD COLUMN IF NOT EXISTS review_note text;
+
+-- Zoho CRM connection (one per organisation): OAuth tokens encrypted with FIELD_KEY, data-centre aware.
+ALTER TABLE crm_connections DROP CONSTRAINT IF EXISTS crm_connections_provider_check;
+ALTER TABLE crm_connections ADD CONSTRAINT crm_connections_provider_check CHECK (provider IN ('webhook','zoho'));
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS accounts_server text;
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS api_domain text;
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS refresh_token_enc text;
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS access_token_enc text;
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS access_expires_at timestamptz;
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS external_account text;
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS external_org_id text;
+ALTER TABLE crm_connections ADD COLUMN IF NOT EXISTS settings jsonb NOT NULL DEFAULT '{}'::jsonb;
+CREATE UNIQUE INDEX IF NOT EXISTS crm_connections_one_zoho ON crm_connections (org_id) WHERE provider = 'zoho';
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS zoho_id text;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS zoho_module text;
+
+-- Dialer IDs: how a calling platform names an agent (extension, agent number, login) → our agent code.
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS dialer_ids text[] NOT NULL DEFAULT '{}';
+
+-- Call recording sources: a dialer / telephony platform posts "call ended" events with a recording URL.
+CREATE TABLE IF NOT EXISTS call_sources (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id             uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  provider           text NOT NULL CHECK (provider IN ('generic','exotel','ozonetel','smartflo','knowlarity','myoperator')),
+  name               text NOT NULL CHECK (length(name) BETWEEN 2 AND 80),
+  token_hash         text NOT NULL,
+  download_auth_enc  text,                       -- optional "user:password" or "Bearer …" to fetch the recording
+  field_map          jsonb NOT NULL DEFAULT '{}'::jsonb,
+  default_campaign   text,
+  is_active          boolean NOT NULL DEFAULT true,
+  last_event_at      timestamptz,
+  created_by         uuid REFERENCES users(id) ON DELETE SET NULL,
+  created_at         timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS ingest_events (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id             uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  source_id          uuid NOT NULL REFERENCES call_sources(id) ON DELETE CASCADE,
+  external_call_id   text NOT NULL,
+  status             text NOT NULL DEFAULT 'received' CHECK (status IN ('received','downloading','queued','processing','skipped','failed')),
+  detail             text,
+  keys               text[] NOT NULL DEFAULT '{}',  -- field names the dialer sent (to fix a mapping), never the values
+  call_id            uuid REFERENCES calls(id) ON DELETE SET NULL,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  updated_at         timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (source_id, external_call_id)
+);
+CREATE INDEX IF NOT EXISTS ingest_events_org_idx ON ingest_events (org_id, created_at DESC);
+ALTER TABLE ingest_events ADD COLUMN IF NOT EXISTS mapped jsonb;   -- the normalised fields (recording URL, numbers, times) used to process / retry

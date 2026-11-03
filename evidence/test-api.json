@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-30T09:56:49.698Z",
+  "when": "2026-11-03T10:23:07.298Z",
   "base": "http://127.0.0.1:3200",
   "passed": 41,
   "failed": 0,
@@ -167,7 +167,7 @@
     {
       "name": "a red / high-risk result notifies the agent’s managers",
       "ok": true,
-      "detail": "6 notification(s)"
+      "detail": "10 notification(s)"
     },
     {
       "name": "malformed JSON → 400",
