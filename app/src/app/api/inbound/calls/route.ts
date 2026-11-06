@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
   if (raw.length > 1024 * 1024) return NextResponse.json({ ok: false, message: 'Body over 1 MB' }, { status: 413 });
   let body: any;
   try { body = JSON.parse(raw); } catch { return NextResponse.json({ ok: false, message: 'Body is not valid JSON' }, { status: 400 }); }
-  const data = body?.data && typeof body.data === 'object' ? { ...body.data, org_id: body.data.org_id ?? body.org_id } : body;   // Studio http piece puts JSON under body.data
+  const data = body?.data && typeof body.data === 'object'   // Studio http piece puts JSON under body.data
+    ? { ...body.data, org_id: body.data.org_id ?? body.org_id, call_row_id: body.data.call_row_id || body.call_row_id || undefined } : body;
   const p = CallResult.safeParse(data);
   if (!p.success) return NextResponse.json({ ok: false, message: 'Invalid payload', issues: p.error.issues.slice(0, 10).map((i) => `${i.path.join('.')}: ${i.message}`) }, { status: 400 });
   const org = await withPlatform((db) => db.one<{ id: string }>("SELECT id FROM organizations WHERE id = $1 AND status = 'active'", [p.data.org_id]));

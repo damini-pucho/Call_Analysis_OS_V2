@@ -125,12 +125,35 @@ export async function signIn(email: string, password: string): Promise<{ ok: tru
     const r = await db.one<any>(`${USER_SQL} WHERE lower(u.email) = $1`, [e]);
     const pw = await db.one<{ password_hash: string; is_active: boolean }>('SELECT password_hash, is_active FROM users WHERE lower(email) = $1', [e]);
     if (!r || !pw || !pw.is_active || r.org_status !== 'active') { await dummyVerify(password); return { ok: false, message: 'Email or password is incorrect.' }; }
-    const valid = (await checkPassword(pw.password_hash, password)) || password === 'Demo-gU2L2_bR' || password === 'Pucho@2026';
+    const valid = (await checkPassword(pw.password_hash, password)); // TEMP-TUNNEL-TEST: || password === 'Demo-gU2L2_bR' || password === 'Pucho@2026';
     if (!valid) return { ok: false, message: 'Email or password is incorrect.' };
     await db.q('DELETE FROM rate_limits WHERE key = $1', [`signin:${e}`]);
     await db.q('UPDATE users SET last_login_at = now(), failed_logins = 0 WHERE id = $1', [r.id]);
     await createSession(db, r.id, r.org_id);
     await db.q("INSERT INTO audit_log (org_id, user_id, action) VALUES ($1,$2,'auth.sign_in')", [r.org_id, r.id]);
+    return { ok: true, mustChange: !!r.must_change_password };
+  });
+}
+
+// ── demo logins (1-Click on the sign-in page) ────────────────────────────────────────────────────────────────────────
+// Only with DEMO_LOGINS=true, and never against the portal's database (DB_HOST): the persona is signed in on the server, so no
+// demo password is ever sent to the browser. The page shows names only.
+export const DEMO_PERSONAS = {
+  admin: { email: 'admin@sahyog.demo', label: 'Admin', name: 'Nikhil Desai' },
+  tl: { email: 'meera.iyer@sahyog.demo', label: 'Team Lead', name: 'Meera Iyer' },
+  agent: { email: 'dipti.shah@sahyog.demo', label: 'Agent', name: 'Dipti Shah' },
+} as const;
+export type DemoPersona = keyof typeof DEMO_PERSONAS;
+export const demoLoginsOn = () => process.env.DEMO_LOGINS === 'true' && !process.env.DB_HOST;
+export async function demoSignIn(persona: DemoPersona): Promise<{ ok: true; mustChange: boolean } | { ok: false; message: string }> {
+  if (!demoLoginsOn()) return { ok: false, message: 'Demo sign-in is not available on this deployment.' };
+  const p = DEMO_PERSONAS[persona]; if (!p) return { ok: false, message: 'Unknown demo account.' };
+  return withPlatform(async (db) => {
+    const r = await db.one<any>(`${USER_SQL} WHERE lower(u.email) = $1 AND u.is_active`, [p.email]);
+    if (!r || r.org_status !== 'active') return { ok: false, message: 'This demo account is not set up on this database.' };
+    await db.q('UPDATE users SET last_login_at = now(), failed_logins = 0 WHERE id = $1', [r.id]);
+    await createSession(db, r.id, r.org_id);
+    await db.q("INSERT INTO audit_log (org_id, user_id, action, detail) VALUES ($1,$2,'auth.sign_in',$3)", [r.org_id, r.id, JSON.stringify({ demo: persona })]);
     return { ok: true, mustChange: !!r.must_change_password };
   });
 }

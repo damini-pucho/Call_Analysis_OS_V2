@@ -19,7 +19,8 @@ export const flowConnected = (f: FlowName) => /^https:\/\//.test(flowUrl(f));
 export const publicAppUrl = () => (process.env.PUBLIC_APP_URL || process.env.APP_ORIGIN || '').replace(/\/$/, '');
 
 /** POST to a flow and record the run. Returns 'not_connected' without any network call when the URL is unset. */
-export async function callFlow(db: Db, orgId: string, flow: FlowName, refId: string | null, payload: Record<string, unknown>)
+export async function callFlow(db: Db, orgId: string, flow: FlowName, refId: string | null, payload: Record<string, unknown>,
+  file?: { field: string; name: string; mime: string; data: Buffer })
   : Promise<{ status: 'sent' | 'not_connected' | 'failed'; httpStatus?: number; detail?: string }> {
   const url = flowUrl(flow);
   if (!flowConnected(flow)) {
@@ -28,7 +29,15 @@ export async function callFlow(db: Db, orgId: string, flow: FlowName, refId: str
   }
   const body = { ...payload, org_id: orgId, app_url: publicAppUrl(), inbound_token: process.env.INBOUND_TOKEN || '' };
   try {
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+    // with a file: multipart, as V1 Upload posts it (objects as JSON text); otherwise JSON
+    let init: RequestInit = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+    if (file) {
+      const fd = new FormData();
+      fd.append(file.field, new Blob([new Uint8Array(file.data)], { type: file.mime }), file.name);
+      for (const [k, v] of Object.entries(body)) if (v != null && k !== file.field) fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+      init = { method: 'POST', body: fd };
+    }
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(file ? 120000 : 20000) });
     const ok = res.ok;
     await db.q('INSERT INTO flow_runs (org_id, flow, ref_id, status, http_status, detail) VALUES ($1,$2,$3,$4,$5,$6)',
       [orgId, flow, refId, ok ? 'sent' : 'failed', res.status, ok ? null : (await res.text().catch(() => '')).slice(0, 300)]);

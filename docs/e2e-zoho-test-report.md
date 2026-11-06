@@ -103,3 +103,59 @@ Also: the test recording, `v1-run-create-row-input.json` (signed audio link remo
 6. **Master password lines** in `src/lib/auth.ts` are still present (kept for demos); remove them before any real pilot.
 7. A leftover webhook CRM connection named "test" is in the demo org (from earlier testing).
 8. Zoho's WorkDrive migration popup was dismissed, not acted on.
+
+---
+
+# Automatic upload → Studio → V2 → Zoho (2026-11-03, second pass)
+
+Goal: no manual triggering, no manual result submission, no new or duplicated workflow.
+
+## Exact changes
+
+**V2 code (3 files + .env.example)**
+
+| File | Change |
+|---|---|
+| `src/lib/flows.ts` | `callFlow()` takes an optional file and then posts **multipart** (file + fields, objects as JSON text), the way V1 Upload posts to the same webhook. JSON stays the default. Timeout 120 s with a file. |
+| `src/lib/ingest.ts` | `sendToFlow()` sends the stored recording itself as `recording` when `WEBHOOK_CALL_PROCESSING_BODY=multipart`, so Studio needs no download link. Fields: `call_row_id, filename, agent_code, agent_name, mobile_number, call_id, call_date, campaign, coaching_flag, direction, org_id, app_url, inbound_token` (+ agents, company_context). |
+| `src/app/api/inbound/calls/route.ts` | Accepts `call_row_id` beside `data`, as it already did for `org_id`. |
+| `.env.example` | Documents `WEBHOOK_CALL_PROCESSING_BODY`. |
+
+**`.env` (not committed):** `WEBHOOK_CALL_PROCESSING=https://studio.pucho.ai/api/v1/webhooks/GTHrKkSY3nJKz1lCywbN5`
+(async URL, not `/sync`), `WEBHOOK_CALL_PROCESSING_BODY=multipart`, `PUBLIC_APP_URL=<Cloudflare quick-tunnel URL>`.
+
+**Existing Studio flow "Call Processing Pipeline(call-analysis)-v1" (edited and published, not duplicated):** one HTTP step,
+"Send result to V2 (/api/inbound/calls)", added after each single-recording Create Row (`Create Row Copy` and `Create Row Copy Copy`):
+POST `{{trigger.body.app_url}}/api/inbound/calls`, `Authorization: Bearer {{trigger.body.inbound_token}}`. The body is the same
+fields Create Row writes, plus `org_id` and `call_row_id` from the trigger. **On Failure = Continue flow on all errors.** V1 uploads
+send no `app_url`, so for them this step fails quietly and the V1 run is unchanged. All other steps (STT, LLM prompts, Create Row
+in V1 Supabase) are untouched. The step definition is saved as `workflows/V1_FLOW_WRITE_BACK_STEP.json`.
+
+## Test (recording `20261103-TESTE2E02_9000011234_1011_SUPPORT-all.wav`, uploaded on V2 `/upload`)
+
+| Time (IST) | Event |
+|---|---|
+| 16:18:14 | Upload → V2 stored the file and posted multipart to the webhook → HTTP 200, call `processing` (`flow_runs: sent`) |
+| 16:18 | Studio run `YIoZsqONZjTyKFtIpb8L2`, 11 steps, all green; step 31 "Send result to V2" took 1 s |
+| 16:25:35 | `POST /api/inbound/calls` 200 (from Studio via the tunnel) → call `processed`; `flow_runs: completed` |
+| 16:25:35 | Zoho: "Note + call activity added to Contact 1476988000000559012" |
+
+Total ≈ 7 min 20 s: the flow's Delay step waits for Sarvam STT. Result: quality 5, KPI 92, SOP 6, Positive, SIP — "SIP amount
+increase request", Green, BFSI compliance 100, 7 SOP + 15 KPI results, transcript 1,238 chars, agent Dipti Shah.
+
+**Manual triggering required: No. Manual result submission required: No.**
+
+Screenshots: `09-studio-flow-write-back-steps-published.jpg`, `10-v2-upload-auto-sent-processing.jpg`,
+`11-studio-auto-run-send-result-to-v2.jpg`, `12-v2-customer-zoho-two-calls-synced.jpg`.
+
+## Still to know
+
+1. **Public URL.** Studio reaches V2 through a temporary Cloudflare quick tunnel. When it closes or its URL changes, results can't
+   come back and calls stay *processing*. For lasting use, deploy V2 (or use a named tunnel) and set `PUBLIC_APP_URL`.
+2. **Every V2 upload also writes a row to V1 Supabase**, because the flow's Create Row is unchanged. This run added a 3rd test row
+   (filename `…TESTE2E02…`). Please delete the 3 test rows.
+3. The demo master-password lines in `auth.ts` are disabled (commented, marked `TEMP-TUNNEL-TEST`) while the tunnel is open.
+4. While the webhook is set, *any* V2 upload or "Send for analysis" goes to the production flow. The 3 old demo calls on the Upload
+   page ("Send 3 for analysis") were deliberately not sent.
+5. Regression suites were not re-run with the webhook set: `test-api.mjs` uploads recordings, which would now reach the production
+   flow. Typecheck is clean.

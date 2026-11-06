@@ -7,13 +7,11 @@
 @font-face { font-family: 'Geist'; src: url('../assets/fonts/geist/Geist-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Geist'; src: url('../assets/fonts/geist/Geist-Italic-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: italic; font-display: swap; }
 @font-face { font-family: 'Geist Mono'; src: url('../assets/fonts/geist/GeistMono-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Newsreader'; src: url('../assets/fonts/newsreader/Newsreader-Variable.woff2') format('woff2'); font-weight: 200 800; font-style: normal; font-display: swap; }
 
 :root {
   --primary: var(--ink);
   --primary-strong: var(--ink-hover);
   --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --font-display-app: 'Newsreader', Georgia, serif;
 }
 html[data-theme='dark'] { --primary-strong: var(--ink); }
 

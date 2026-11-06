@@ -78,17 +78,17 @@ export default function UploadView({ connected, pattern, waiting }) {
             <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-ink-2"><UploadCloud size={22} /></span>
             <p className="font-medium text-ink">Drop a recording or ZIP here, or click to browse</p>
             <p className="mt-1 text-[13px] text-ink-3">MP3, WAV, OGG, FLAC, M4A, WEBM, AAC or ZIP · up to 200 MB</p>
+            <p className="mt-1 text-[12px] text-ink-3">Analysis takes about 2 minutes per call. A ZIP takes longer — its recordings are analysed one after another (about 2 minutes each).</p>
             <input ref={input} type="file" accept={ACCEPT} className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
           </div>
           {file && (
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line p-4">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-2 text-ink-2">{isZip ? <FileArchive size={18} /> : <FileAudio size={18} />}</span>
-              <div className="min-w-0 flex-1"><div className="truncate font-medium text-ink">{file.name}</div><div className="text-[13px] text-ink-3">{(file.size / 1024 / 1024).toFixed(1)} MB · {isZip ? 'bulk ZIP — every recording inside becomes a call' : 'single recording — usually 4–7 minutes to analyse'}</div></div>
+              <div className="min-w-0 flex-1"><div className="truncate font-medium text-ink">{file.name}</div><div className="text-[13px] text-ink-3">{(file.size / 1024 / 1024).toFixed(1)} MB · {isZip ? 'bulk ZIP — every recording inside becomes a call · takes longer, about 2 minutes per recording' : 'single recording — about 2 minutes to analyse'}</div></div>
               <Button variant="primary" onClick={upload} loading={busy}>{busy ? `Uploading ${progress}%` : 'Upload & analyse'}</Button>
             </div>
           )}
           {busy && <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-ink transition-[width]" style={{ width: `${progress}%` }} /></div>}
-          <p className="mt-4 text-[12px] text-ink-3">Filenames like <code className="kbd">{pattern}.mp3</code> fill in the date, lead ID, customer mobile, agent code and campaign automatically.</p>
         </Card>
 
         <Card title="How it works">
@@ -123,7 +123,8 @@ export default function UploadView({ connected, pattern, waiting }) {
         </Card>
       )}
 
-      <WaitingList waiting={waiting} connected={connected} />
+      {/* the files of this upload are already listed above with live status — not again here */}
+      <WaitingList waiting={waiting.filter((w) => !rows.some((r) => r.id === w.id))} connected={connected} />
     </div>
   );
 }

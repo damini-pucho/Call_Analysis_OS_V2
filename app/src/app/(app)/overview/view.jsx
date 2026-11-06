@@ -1,8 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { AlertTriangle, Flag, TrendingDown, Ban, ChevronDown, Download, RefreshCw, ArrowRight, CheckCircle2, Hourglass, PhoneCall, ListChecks, Timer, ArrowLeftRight } from 'lucide-react';
+import { AlertTriangle, Flag, TrendingDown, Ban, ChevronDown, Download, ArrowRight, CheckCircle2, Hourglass, PhoneCall, ListChecks, Timer, ArrowLeftRight } from 'lucide-react';
 import { Card, Kpi, ScoreRing, Progress, Callout, Empty, Button, downloadCsv, Reveal, cn } from '@/components/ui';
 import { SplitBar } from '@/components/Charts';
 import PeriodBar, { usePeriodCalls } from '@/components/PeriodBar';
@@ -12,7 +11,7 @@ import * as M from '@/lib/metrics';
 const greet = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
 
 export default function OverviewView({ calls: all }) {
-  const user = useUser(); const can = useCan(); const router = useRouter();
+  const user = useUser(); const can = useCan();
   const scoped = usePeriodCalls(all);
   const calls = useMemo(() => scoped.filter(M.isProcessed), [scoped]);
   const pending = scoped.filter((c) => c.status === 'queued' || c.status === 'processing');
@@ -60,7 +59,7 @@ export default function OverviewView({ calls: all }) {
           <h1 className="mt-1 font-display text-[30px] font-medium leading-tight text-ink">{greet()}, {user.name.split(' ')[0]}</h1>
           <p className="mt-1 text-[14px] text-ink-3">{n} analysed call{n === 1 ? '' : 's'} in this period{user.scope !== 'all' ? (user.scope === 'team' ? ' · your team' : ' · your calls') : ''}.</p>
         </div>
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2"><PeriodBar /><Button size="sm" variant="ghost" onClick={() => router.refresh()} aria-label="Refresh data"><RefreshCw size={14} />Refresh</Button></div>
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2"><PeriodBar /></div>
       </div>
 
       {pending.length > 0 && (
@@ -133,7 +132,8 @@ export default function OverviewView({ calls: all }) {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="card p-4">
               <div className="flex items-center justify-between"><span className="label">Total calls</span><PhoneCall size={16} className="text-ink-3" /></div>
-              <div className="mt-2 text-[28px] font-semibold tabular-nums text-ink">{n}</div>
+              <div className="mt-2 text-[28px] font-semibold tabular-nums text-ink">{scoped.length}</div>
+              <div className="text-[12px] text-ink-3">{[[n, 'analysed'], [scoped.filter((c) => c.status === 'skipped').length, 'skipped'], [pending.length, 'waiting'], [scoped.filter((c) => c.status === 'failed').length, 'failed']].filter(([k]) => k).map(([k, w]) => `${k} ${w}`).join(' · ')}</div>
               <div className="mt-3 flex h-8 items-end gap-[3px]" aria-label="Calls per day, last 14 days">{daily.map((d) => <span key={d.date} title={`${d.date}: ${d.calls}`} className="flex-1 rounded-sm bg-cat-1" style={{ height: `${Math.max(10, (d.calls / maxD) * 100)}%`, opacity: 0.75 }} />)}</div>
               <Link href="/calls" className="mt-2 inline-block text-[12px] text-ink-3 hover:text-ink">Open call list →</Link>
             </div>

@@ -1,4 +1,5 @@
 'use server';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { guard, zId, zText, zReq } from '@/lib/action';
@@ -126,7 +127,7 @@ async function sendForExtraction(db: Db, orgId: string, docId: string) {
   const org = await db.one<any>('SELECT name, industry FROM organizations WHERE id = $1', [orgId]);
   const existing = await db.q('SELECT kind, title FROM sop_rules WHERE org_id = $1 AND is_active', [orgId]);
   // plain-text documents go to the flow as text (the flow reads PDFs and scans through its document piece instead)
-  const document_text = /\.(txt|md)$/i.test(d.filename) && Number(d.size_bytes) <= 200_000 ? (await readStored(d.storage_path)).toString('utf8') : '';
+  const document_text = /\.(txt|md)$/i.test(d.filename) && Number(d.size_bytes) <= 200_000 ? (await readStored(d.storage_path)).toString('utf8') : undefined;   // left out for PDF / Word, so the flow's router ("Exists") sends those to the OCR branch
   const r = await callFlow(db, orgId, 'sop_extraction', d.id, {
     document_id: d.id, kind: d.kind, title: d.title, filename: d.filename, mime: d.mime, file_url: signedFileUrl(d.file_id),
     document_text, company_name: org?.name, industry: org?.industry, existing_rules: existing,
@@ -143,7 +144,12 @@ export async function uploadDocument(form: FormData) {
     if (!(file instanceof File) || file.size === 0) return { ok: false, message: 'Choose a file to upload.', fields: { file: 'Required' } };
     if (!DOC_EXT.test(file.name)) return { ok: false, message: 'Upload a PDF, Word, text or Markdown file.', fields: { file: 'Unsupported type' } };
     if (file.size > 25 * 1024 * 1024) return { ok: false, message: 'Documents are limited to 25 MB.', fields: { file: 'Too large' } };
-    const f = await saveFile(db, user.orgId, user.id, data.kind, file.name, Buffer.from(await file.arrayBuffer()));
+    const bytes = Buffer.from(await file.arrayBuffer());
+    // the same document uploaded again is refused — it would only produce a second set of the same rules
+    const same = await db.one<{ title: string }>('SELECT d.title FROM company_documents d JOIN files f ON f.id = d.file_id WHERE d.org_id = $1 AND f.sha256 = $2 LIMIT 1',
+      [user.orgId, createHash('sha256').update(bytes).digest('hex')]);
+    if (same) return { ok: false, message: `This file is already uploaded as “${same.title}”.`, fields: { file: 'Already uploaded' } };
+    const f = await saveFile(db, user.orgId, user.id, data.kind, file.name, bytes);
     const doc = await db.one<{ id: string }>('INSERT INTO company_documents (org_id, kind, title, file_id, effective_from, uploaded_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
       [user.orgId, data.kind, data.title, f.id, data.effective_from || null, user.id]);
     const r = await sendForExtraction(db, user.orgId, doc!.id);

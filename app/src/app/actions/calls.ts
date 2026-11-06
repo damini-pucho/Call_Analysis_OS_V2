@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { guard, zId } from '@/lib/action';
 import { agentScope } from '@/lib/tenant';
 import { sendToFlow } from '@/lib/ingest';
+import { deleteFile } from '@/lib/files';
 import type { Db } from '@/lib/db';
 import type { SessionUser } from '@/lib/auth';
 
@@ -84,4 +85,28 @@ export async function resendToFlow(input: unknown) {
     revalidatePath('/calls'); revalidatePath('/upload');
     return sent ? { ok: true, message: `${sent} recording(s) sent for analysis.` } : { ok: false, message: last || 'Nothing was sent.' };
   }, 'call.resend');
+}
+
+const Delete = z.object({ ids: z.array(zId).min(1).max(500) }).strict();
+export async function deleteCalls(input: unknown) {
+  return guard(['upload.analyze', 'calls.edit'], Delete, input, async ({ db, user, data }) => {
+    let deleted = 0;
+    for (const id of data.ids) {
+      const c = await scopedCall(db, user, id);
+      if (!c) continue;
+      const row = await db.one<{ audio_file_id: string | null }>(
+        'SELECT audio_file_id FROM calls WHERE id = $1 AND org_id = $2', [id, user.orgId]);
+      await db.q('DELETE FROM flow_runs WHERE ref_id = $1 AND org_id = $2', [id, user.orgId]);
+      await db.q('DELETE FROM coaching_notes WHERE call_id = $1 AND org_id = $2', [id, user.orgId]);
+      await db.q('DELETE FROM calls WHERE id = $1 AND org_id = $2', [id, user.orgId]);
+      if (row?.audio_file_id) {
+        await deleteFile(db, user.orgId, row.audio_file_id);
+      }
+      deleted++;
+    }
+    revalidatePath('/calls');
+    revalidatePath('/overview');
+    revalidatePath('/upload');
+    return { ok: true, message: `${deleted} call${deleted === 1 ? '' : 's'} deleted.` };
+  }, 'call.delete');
 }

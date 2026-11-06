@@ -9,3 +9,8 @@ app/db/seed-logins.local.md
 app/.next/
 app/.next-build/
 evidence/ui/*.png
+# full database dump (users, customer data) and build packages — shared separately, never in git
+app/db/full_dump.sql
+call-analysis-dist/
+call-analysis-dist.zip
+handover/

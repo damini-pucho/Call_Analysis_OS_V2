@@ -3,12 +3,12 @@
 // 25 per page, CSV export, click-a-cell-to-filter, play, rename agent. Rows open the call detail page.
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Play, Pause, Download, SlidersHorizontal, Columns3, X, Pencil, Send, PhoneCall } from 'lucide-react';
+import { Play, Pause, Download, SlidersHorizontal, Columns3, X, Pencil, Send, PhoneCall, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Badge, Button, Modal, Field, Input, Select, Empty, Pager, usePager, downloadCsv, cn, Avatar } from '@/components/ui';
 import PeriodBar, { usePeriodCalls } from '@/components/PeriodBar';
 import { useCan, usePlayer } from '@/components/providers';
-import { renameAgent, resendToFlow } from '@/app/actions/calls';
+import { renameAgent, resendToFlow, deleteCalls } from '@/app/actions/calls';
 import * as M from '@/lib/metrics';
 
 const EMPTY = { q: '', agent: '', campaign: '', callId: '', date: '', mobile: '', coaching: '', compliance: '', churn: '', direction: '', classification: '', topic: '', sentiment: '', status: '' };
@@ -68,13 +68,28 @@ export default function CallsView({ calls: all, campaigns }) {
     r.ok ? toast.success(r.message) : toast.error(r.message);
     setSelected(new Set()); router.refresh();
   };
+  const [deleting, setDeleting] = useState(false);
+  const del = async () => {
+    if (!confirm(`Are you sure you want to permanently delete ${selected.size} recording(s)? This will remove them from the database and storage.`)) return;
+    setDeleting(true);
+    const ids = [...selected];
+    const r = await deleteCalls({ ids });
+    setDeleting(false);
+    r.ok ? toast.success(r.message) : toast.error(r.message);
+    setSelected(new Set()); router.refresh();
+  };
   const cell = (k, v, label) => <button type="button" className="text-left hover:underline" onClick={(e) => { e.stopPropagation(); set(k, v); setShowFilters(true); }} title={`Filter by ${label || v}`}>{label ?? v}</button>;
   const pendingRows = rows.filter((c) => c.status !== 'processed' && c.status !== 'skipped');
 
   return (
     <div>
       <PageHeader title="Calls" sub="Every recording with its transcript, scores and coaching. Click a value to filter by it." actions={<>
-        {can('upload.analyze') && selected.size > 0 && <Button size="sm" variant="secondary" onClick={resend}><Send size={14} />Send {selected.size} for analysis</Button>}
+        {selected.size > 0 && (
+          <>
+            {can('upload.analyze') && pendingRows.some((c) => selected.has(c.id)) && <Button size="sm" variant="secondary" onClick={resend}><Send size={14} />Send for analysis</Button>}
+            {(can('upload.analyze') || can('calls.edit')) && <Button size="sm" variant="danger" onClick={del} loading={deleting}><Trash2 size={14} />Delete {selected.size}</Button>}
+          </>
+        )}
         {can('calls.export') && <Button size="sm" onClick={exportCsv} disabled={!rows.length}><Download size={14} />Export CSV</Button>}
       </>} />
 
@@ -130,7 +145,22 @@ export default function CallsView({ calls: all, campaigns }) {
             <div className="hidden max-h-[70vh] overflow-auto sm:block">
               <table className="table">
                 <thead><tr>
-                  {can('upload.analyze') && <th className="w-8"><input type="checkbox" className="check" aria-label="Select waiting calls on this page" checked={pendingRows.length > 0 && pendingRows.every((c) => selected.has(c.id))} onChange={(e) => setSelected(e.target.checked ? new Set(pendingRows.map((c) => c.id)) : new Set())} /></th>}
+                  {(can('upload.analyze') || can('calls.edit')) && (
+                    <th className="w-8">
+                      <input
+                        type="checkbox"
+                        className="check"
+                        aria-label="Select calls on this page"
+                        checked={pager.slice.length > 0 && pager.slice.every((c) => selected.has(c.id))}
+                        onChange={(e) => {
+                          const n = new Set(selected);
+                          if (e.target.checked) pager.slice.forEach((c) => n.add(c.id));
+                          else pager.slice.forEach((c) => n.delete(c.id));
+                          setSelected(n);
+                        }}
+                      />
+                    </th>
+                  )}
                   <th className="w-10">#</th><th className="w-10"><span className="sr-only">Play</span></th>
                   {COLS.filter(([k]) => show(k)).map(([k, l]) => <th key={k}>{l}</th>)}
                 </tr></thead>
@@ -139,7 +169,17 @@ export default function CallsView({ calls: all, campaigns }) {
                     const q = M.quality(c); const s = M.sopPoints(c); const playing = player.current?.id === c.id && player.playing;
                     return (
                       <tr key={c.id} className="row-link" onClick={() => router.push(`/calls/${c.id}`)}>
-                        {can('upload.analyze') && <td onClick={(e) => e.stopPropagation()}>{c.status !== 'processed' && c.status !== 'skipped' && <input type="checkbox" className="check" aria-label="Select for re-send" checked={selected.has(c.id)} onChange={(e) => setSelected((x) => { const n = new Set(x); e.target.checked ? n.add(c.id) : n.delete(c.id); return n; })} />}</td>}
+                        {(can('upload.analyze') || can('calls.edit')) && (
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              className="check"
+                              aria-label="Select call"
+                              checked={selected.has(c.id)}
+                              onChange={(e) => setSelected((x) => { const n = new Set(x); e.target.checked ? n.add(c.id) : n.delete(c.id); return n; })}
+                            />
+                          </td>
+                        )}
                         <td className="tabular-nums text-ink-3">{pager.from + i}</td>
                         <td onClick={(e) => e.stopPropagation()}><button className="icon-btn h-8 w-8" disabled={!c.audio_file_id} onClick={() => player.play(c, pager.slice)} aria-label={playing ? 'Pause recording' : 'Play recording'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button></td>
                         {show('date') && <td className="whitespace-nowrap text-ink-2">{c.call_date ? new Date(`${c.call_date}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>}
@@ -151,7 +191,7 @@ export default function CallsView({ calls: all, campaigns }) {
                         {show('type') && <td>{cell('direction', M.direction(c), M.direction(c) === 'Inbound' ? 'IN' : 'OUT')}</td>}
                         {show('lang') && <td className="text-ink-2">{c.language || '—'}</td>}
                         {show('duration') && <td className="tabular-nums text-ink-2">{M.fmtDuration(M.seconds(c))}</td>}
-                        {show('quality') && <td>{q == null ? '—' : <span className={cn('font-medium tabular-nums', q <= 2 ? 'text-bad-text' : q < 4 ? 'text-warn-text' : 'text-ok-text')}>{q.toFixed(1)}/5</span>}</td>}
+                        {show('quality') && <td>{q == null ? (c.status !== 'processed' ? <Badge title={c.status_reason || undefined}>{c.status === 'skipped' ? 'Skipped' : c.status}</Badge> : '—') : <span className={cn('font-medium tabular-nums', q <= 2 ? 'text-bad-text' : q < 4 ? 'text-warn-text' : 'text-ok-text')}>{q.toFixed(1)}/5</span>}</td>}
                         {show('sop') && <td>{s == null ? '—' : <span className={cn('tabular-nums', s <= 4 ? 'text-warn-text' : 'text-ok-text')}>{Number(s).toFixed(0)}/7</span>}</td>}
                         {show('classification') && <td>{M.classification(c) ? cell('classification', M.classification(c)) : '—'}</td>}
                         {show('topic') && <td className="max-w-[220px]"><div className="truncate">{M.topic(c) ? cell('topic', M.topic(c)) : '—'}</div><div className="truncate text-[12px] text-ink-3">{M.subTopic(c)}</div></td>}

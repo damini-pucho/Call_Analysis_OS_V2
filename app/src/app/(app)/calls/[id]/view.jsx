@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Play, Pause, Clock, Languages, Hash, Megaphone, ArrowLeftRight, Sparkles, Target, ListChecks, MessageSquareText, Gauge, Tag, NotebookPen, Plus, X, Send, User, ShieldAlert, History, Check } from 'lucide-react';
+import { Play, Pause, Clock, Languages, Hash, Megaphone, ArrowLeftRight, Sparkles, Target, ListChecks, MessageSquareText, Gauge, Tag, NotebookPen, Plus, X, Send, User, ShieldAlert, History, Check, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Badge, Button, Card, Callout, Avatar, Field, Textarea, Select, Input, Empty, ScoreRing, cn } from '@/components/ui';
 import { useCan, usePlayer } from '@/components/providers';
-import { addTag, removeTag, addCoachingNote, setNoteResolved, resendToFlow } from '@/app/actions/calls';
+import { addTag, removeTag, addCoachingNote, setNoteResolved, resendToFlow, deleteCalls } from '@/app/actions/calls';
 // @ts-ignore
 import { KPI_DEFS } from '@/lib/catalog.mjs';
 import * as M from '@/lib/metrics';
@@ -33,6 +33,15 @@ export default function CallDetail({ call: c, notes, runs, maskPii }) {
   const [note, setNote] = useState(''); const [noteType, setNoteType] = useState('Manager'); const [noteErr, setNoteErr] = useState(null); const [busy, setBusy] = useState(false);
 
   const run = async (fn, ok) => { setBusy(true); const r = await fn(); setBusy(false); if (!r.ok) { toast.error(r.message); return r; } if (ok || r.message) toast.success(ok || r.message); router.refresh(); return r; };
+  const deleteCurrentCall = async () => {
+    if (!confirm('Are you sure you want to permanently delete this call? This cannot be undone.')) return;
+    setBusy(true);
+    const r = await deleteCalls({ ids: [c.id] });
+    setBusy(false);
+    if (!r.ok) { toast.error(r.message); return; }
+    toast.success('Call deleted.');
+    router.push('/calls');
+  };
   const kv = (id, name) => { const k = M.kpi(c, name, id); return { value: k?.value ?? null, note: k?.note || i[`kpi${id}_note`] || null, k }; };
   const hasBfsi = c.bfsi_false_guarantee_flag || c.bfsi_risk_disclaimer_spoken || c.bfsi_identity_verified || c.bfsi_product_category;
   const k15 = M.kpi(c, 'Customer & Agent Sentiment', 15);
@@ -41,7 +50,12 @@ export default function CallDetail({ call: c, notes, runs, maskPii }) {
     <div className="space-y-4">
       <PageHeader crumbs={[{ label: 'Calls', href: '/calls' }, { label: c.agent_name || 'Unknown agent', href: c.agent_code && can('agents.view') ? `/agents/${encodeURIComponent(c.agent_code)}` : undefined }, { label: `Call ${c.call_id}` }]}
         title={<span className="flex items-center gap-3"><Avatar name={c.agent_name} size={40} /><span>{c.agent_name || 'Unknown agent'} <span className="text-[15px] font-normal text-ink-3">· {c.agent_code || '—'}</span></span></span>}
-        actions={<Button variant="primary" onClick={() => player.play(c)} disabled={!c.audio_file_id}>{playing ? <Pause size={16} /> : <Play size={16} />}{playing ? 'Pause' : 'Play recording'}</Button>} />
+        actions={<>
+          {(can('upload.analyze') || can('calls.edit')) && (
+            <Button variant="danger" size="sm" onClick={deleteCurrentCall} loading={busy}><Trash2 size={14} />Delete</Button>
+          )}
+          <Button variant="primary" onClick={() => player.play(c)} disabled={!c.audio_file_id}>{playing ? <Pause size={16} /> : <Play size={16} />}{playing ? 'Pause' : 'Play recording'}</Button>
+        </>} />
 
       <div className="flex flex-wrap gap-2 text-[13px]">
         {[[Clock, M.fmtDuration(M.seconds(c))], [Languages, c.language], [Hash, `Lead ${c.call_id}`], [Megaphone, M.campaignOf(c)], [ArrowLeftRight, M.direction(c)], [User, c.mobile_number ? (c.customer_id ? <Link className="underline-offset-2 hover:underline" href={`/customers/${c.customer_id}`}>{c.customer_name || M.maskMobile(c.mobile_number)}</Link> : M.maskMobile(c.mobile_number)) : null]]

@@ -1,7 +1,7 @@
 'use server';
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { signIn, signUp, signOut, currentUser, hashPassword, checkPassword, strongEnough, revokeSessions } from '@/lib/auth';
+import { signIn, signUp, signOut, currentUser, hashPassword, checkPassword, strongEnough, revokeSessions, demoSignIn, DEMO_PERSONAS, type DemoPersona } from '@/lib/auth';
 import { withOrg } from '@/lib/db';
 import { seedOrganization } from '@/lib/tenant';
 import { fieldErrors, type ActionResult } from '@/lib/action';
@@ -14,6 +14,14 @@ export async function signInAction(input: unknown): Promise<ActionResult> {
   const p = SignIn.safeParse(input);
   if (!p.success) return { ok: false, message: 'Please fix the highlighted fields.', fields: fieldErrors(p.error) };
   const r = await signIn(p.data.email, p.data.password);
+  if (!r.ok) return { ok: false, message: r.message };
+  return { ok: true, data: { next: r.mustChange ? '/set-password' : '/overview' } };
+}
+
+export async function demoSignInAction(input: unknown): Promise<ActionResult> {
+  const p = z.object({ persona: z.enum(Object.keys(DEMO_PERSONAS) as [DemoPersona, ...DemoPersona[]]) }).strict().safeParse(input);
+  if (!p.success) return { ok: false, message: 'Unknown demo account.' };
+  const r = await demoSignIn(p.data.persona);
   if (!r.ok) return { ok: false, message: r.message };
   return { ok: true, data: { next: r.mustChange ? '/set-password' : '/overview' } };
 }

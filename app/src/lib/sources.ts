@@ -10,6 +10,8 @@ import type { Db } from './db';
 import { decrypt } from './flows';
 import { queueRecording, sendToFlow } from './ingest';
 import { normMobile } from './crm';
+import { getZoho, recordedCalls, callPhone, zohoDownloadAuth } from './zoho';
+import { createHash, randomBytes } from 'node:crypto';
 
 export type FieldMap = { call_id: string; recording_url: string; agent: string; customer_number: string; direction?: string; started_at?: string; duration?: string; campaign?: string };
 // "A|B" = first non-empty of A, then B. Dotted paths reach into nested JSON.
@@ -59,7 +61,7 @@ export async function safeDownload(url: string, auth: string | null, hops = 3): 
   if (!addrs.length) throw new Error(`Cannot resolve ${u.hostname}`);
   if (!allowPrivate() && addrs.some((a) => privateIp(a.address))) throw new Error('Recording URL points to a private network address');
   const headers: Record<string, string> = {};
-  if (auth) headers.Authorization = auth.startsWith('Bearer ') ? auth : `Basic ${Buffer.from(auth).toString('base64')}`;
+  if (auth) headers.Authorization = auth.startsWith('Bearer ') || auth.startsWith('Zoho-oauthtoken ') ? auth : `Basic ${Buffer.from(auth).toString('base64')}`;
   const res = await fetch(u, { headers, redirect: 'manual', signal: AbortSignal.timeout(120000) });
   if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
     if (hops <= 0) throw new Error('Too many redirects fetching the recording');
@@ -88,7 +90,8 @@ export async function processEvent(db: Db, orgId: string, eventId: string, file?
   try {
     if (!file && !m.recording_url) { await set('skipped', 'No recording in this event (unanswered or recording off).'); return; }
     await set('downloading', null);
-    const auth = ev.download_auth_enc ? decrypt(ev.download_auth_enc, `source:${ev.source_id}`) : null;
+    const zc = ev.provider === 'zoho' && !file ? await getZoho(db, orgId) : null;
+    const auth = zc ? await zohoDownloadAuth(db, zc, m.recording_url!) : ev.download_auth_enc ? decrypt(ev.download_auth_enc, `source:${ev.source_id}`) : null;
     const rec = file ? { data: file.data, type: '' } : await safeDownload(m.recording_url!, auth);
     if (rec.data.length < 1024) throw new Error('The downloaded recording is empty or too small');
     // agent: their code, one of their dialer IDs, or their email; otherwise the dialer's own identifier becomes the code
@@ -103,6 +106,7 @@ export async function processEvent(db: Db, orgId: string, eventId: string, file?
     // the organisation's filename pattern, so the existing parser fills date, lead ID, mobile, agent and campaign
     const filename = `${ymd}-${clean(ev.external_call_id, 24) || ev.id.slice(0, 8)}_${normMobile(m.customer_number || '') || '0000000000'}_${code}_${campaign}-auto.${ext}`;
     const q = await queueRecording(db, orgId, null, filename, rec.data, null);
+    if (q.duplicateOf) { await set('skipped', `Duplicate of ${q.duplicateOf.filename} — the same recording was already received.`, q.duplicateOf.id); return; }
     await db.q('UPDATE calls SET direction = COALESCE($2, direction), duration_seconds = COALESCE($3, duration_seconds) WHERE id = $1', [q.callRowId, m.direction, m.duration_seconds]);
     const r = await sendToFlow(db, orgId, q.callRowId);
     await set(r.status === 'sent' ? 'processing' : 'queued', r.status === 'sent' ? null : r.detail || null, q.callRowId);
@@ -110,4 +114,35 @@ export async function processEvent(db: Db, orgId: string, eventId: string, file?
     await set('failed', e instanceof Error ? e.message : String(e));
   }
   await db.q('UPDATE call_sources SET last_event_at = now() WHERE id = $1', [ev.source_id]);
+}
+
+// ── Zoho CRM call recordings (v2.2) ─────────────────────────────────────────────────────────────────────────────────
+/** Every Zoho call with a recording link that this organisation has not received yet goes through processEvent — the same
+ *  download → queue → call-processing flow (the V1 Studio workflow) as a dialer or an upload. One event per Zoho call id,
+ *  so a sync never imports a call twice; the recording's hash check stops the same audio arriving under another name. */
+export async function syncZohoRecordings(db: Db, orgId: string) {
+  const c = await getZoho(db, orgId);
+  if (!c || !c.is_active) return { ok: false as const, message: 'Zoho CRM is not connected.' };
+  let src = await db.one<{ id: string }>("SELECT id FROM call_sources WHERE org_id = $1 AND provider = 'zoho'", [orgId]);
+  if (!src) src = await db.one<{ id: string }>("INSERT INTO call_sources (org_id, provider, name, token_hash, field_map, default_campaign) VALUES ($1,'zoho','Zoho CRM call recordings',$2,'{}','ZOHO') RETURNING id",
+    [orgId, createHash('sha256').update(randomBytes(32)).digest('hex')]);   // no webhook: this token is never issued
+  const calls = await recordedCalls(db, c);
+  let added = 0, seen = 0;
+  for (const r of calls) {
+    const known = await db.one('SELECT 1 AS x FROM ingest_events WHERE source_id = $1 AND external_call_id = $2', [src!.id, String(r.id)]);
+    if (known) { seen++; continue; }
+    const mapped: Mapped = {
+      call_id: String(r.id), recording_url: r.recording_url, agent: r.Owner?.email || null,
+      customer_number: await callPhone(db, c, r), direction: dir(r.Call_Type || null), started_at: r.Call_Start_Time || null,
+      duration_seconds: r.Call_Duration_in_seconds != null && Number.isFinite(+r.Call_Duration_in_seconds) ? Math.round(+r.Call_Duration_in_seconds) : secs(r.Call_Duration || null), campaign: null,
+    };
+    const ev = await db.one<{ id: string }>(`INSERT INTO ingest_events (org_id, source_id, external_call_id, keys, mapped) VALUES ($1,$2,$3,$4,$5)
+      ON CONFLICT (source_id, external_call_id) DO NOTHING RETURNING id`, [orgId, src!.id, String(r.id), Object.keys(r).slice(0, 80), JSON.stringify(mapped)]);
+    if (!ev) { seen++; continue; }
+    await processEvent(db, orgId, ev.id);
+    added++;
+  }
+  await db.q("INSERT INTO crm_sync_log (org_id, connection_id, direction, event, status, records, detail) VALUES ($1,$2,'import','zoho.recordings','ok',$3,$4)",
+    [orgId, c.id, added, `${calls.length} recorded call(s) in Zoho · ${added} new · ${seen} already received`]);
+  return { ok: true as const, found: calls.length, added, seen, message: added ? `${added} new Zoho recording(s) sent for analysis.` : calls.length ? 'No new Zoho recordings — all were already received.' : 'No Zoho calls with a recording yet.' };
 }

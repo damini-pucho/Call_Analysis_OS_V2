@@ -149,13 +149,13 @@ function AccountMenu({ user, collapsed, avatarSrc }) {
 }
 
 const fmt = (s) => `${Math.floor((s || 0) / 60)}:${String(Math.floor((s || 0) % 60)).padStart(2, '0')}`;
-function PlayerBar() {
+function PlayerBar({ collapsed }) {
   const p = usePlayer(); const reduce = useReducedMotion();
   return (
     <AnimatePresence>
       {(p.current || p.error) && (
         <motion.div initial={reduce ? false : { y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 12, opacity: 0 }} transition={{ duration: reduce ? 0 : D.QUICK, ease: E.OUT }}
-          className="fixed inset-x-3 bottom-3 z-40 rounded-2xl border border-line bg-surface p-3 shadow-float md:left-auto md:right-6 md:w-[560px]" role="region" aria-label="Audio player">
+          className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface px-4 py-3 shadow-float sm:px-6', collapsed ? 'lg:left-[var(--rail-w)]' : 'lg:left-[var(--nav-w)]')} role="region" aria-label="Audio player">
           {p.error && !p.current ? (
             <div className="flex items-center justify-between gap-3 text-[13px] text-bad-text"><span>{p.error}</span><button className="icon-btn" onClick={p.clearError} aria-label="Dismiss"><X size={16} /></button></div>
           ) : (
@@ -198,7 +198,7 @@ export default function AppShell({ children, unread, logoSrc, avatarSrc }) {
       {!collapsed && (
         <div className="min-w-0">
           <span className="block truncate text-[13px] font-bold text-gray-900 leading-tight">{user.orgName}</span>
-          <span className="label block !text-[10px] font-black tracking-widest text-[#7C4DFF] leading-tight" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>CALL ANALYSIS OS</span>
+          <span className="label block !text-[10px] font-black tracking-widest text-[#7C4DFF] leading-tight">CALL ANALYSIS OS</span>
         </div>
       )}
     </div>
@@ -259,7 +259,7 @@ export default function AppShell({ children, unread, logoSrc, avatarSrc }) {
         </main>
         <footer className="px-6 pb-6 text-center text-[12px] text-ink-3 no-print">Powered by Pucho.ai</footer>
       </div>
-      <PlayerBar />
+      <PlayerBar collapsed={collapsed} />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 // the filtered call list (V1 links were ignored).
 import { useState } from 'react';
 import Link from 'next/link';
-import { Download, ArrowRight } from 'lucide-react';
+import { Download, ArrowRight, X } from 'lucide-react';
 import { PageHeader, Card, Button, BarList, Empty, downloadCsv, cn } from '@/components/ui';
 import PeriodBar, { usePeriodCalls } from '@/components/PeriodBar';
 import { useCan } from '@/components/providers';
@@ -52,11 +52,11 @@ function TypeCard({ t, calls, total, onExport }) {
       action={onExport && <Button size="sm" variant="ghost" onClick={() => onExport(rows, t.key)} disabled={!rows.length} aria-label={`Export ${t.key}`}><Download size={14} /></Button>}>
       <div className="flex items-baseline gap-2"><span className="text-[28px] font-semibold tabular-nums text-ink">{rows.length}</span><span className="text-[13px] text-ink-3">{total ? Math.round((rows.length / total) * 100) : 0}% of calls</span>
         <Link href={`/calls?classification=${t.key}`} className="ml-auto text-[13px] text-ink-3 hover:text-ink">Open list →</Link></div>
-      <div className="mt-4"><div className="label mb-2">Top topics</div>
-        {topics.length ? <BarList rows={topics} onPick={(r) => setTopic((x) => (x === r.name ? null : r.name))} tone={null} /> : <p className="text-[13px] text-ink-3">None.</p>}
-        {topic && <button className="mt-2 text-[12px] text-ink-3 hover:text-ink" onClick={() => setTopic(null)}>Showing sub-topics of “{topic}” · show all</button>}
+      <div className="mt-4"><div className="mb-2 flex items-baseline justify-between gap-2"><span className="label">Top topics</span>{topics.length > 0 && <span className="text-[12px] text-ink-3">Click a topic to see its sub-topics</span>}</div>
+        {topics.length ? <BarList rows={topics} selected={topic} onPick={(r) => { setTopic((x) => (x === r.name ? null : r.name)); setAll(false); }} tone={null} /> : <p className="text-[13px] text-ink-3">None.</p>}
       </div>
-      <div className="mt-5"><div className="label mb-2">Common sub-topics</div>
+      <div className="mt-5"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><span className="label">{topic ? `Sub-topics of ${topic}` : 'Common sub-topics'}</span>
+        {topic && <button className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-2 py-0.5 text-[12px] font-medium text-ink-2 hover:text-ink" onClick={() => setTopic(null)} aria-label="Show all sub-topics">{topic}<X size={12} /></button>}</div>
         <ul className="space-y-1">
           {(all ? subs : subs.slice(0, 8)).map((s) => (
             <li key={s.name}><Link href={`/calls?classification=${t.key}&topic=${encodeURIComponent(s.name)}`} className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-[13px] hover:bg-surface-2"><span className="min-w-0 truncate text-ink-2">{s.name}</span><span className="shrink-0 tabular-nums text-ink-3">{s.value} · {Math.round((s.value / total) * 100)}%</span></Link></li>

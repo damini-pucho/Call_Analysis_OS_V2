@@ -94,6 +94,34 @@ export async function zapi(db: Db, c: ZohoConn, method: string, path: string, bo
   }
 }
 
+/** Authorization for a recording hosted by Zoho itself (Zoho Voice / PhoneBridge); null for any other host. */
+const ZOHO_HOST = /(^|\.)(zoho|zohopublic|zohocdn|zohostatic|zohoapis)\.(com|in|eu|com\.au|jp|com\.cn|ca|sa)$/i;
+export async function zohoDownloadAuth(db: Db, c: ZohoConn, url: string) {
+  try { return ZOHO_HOST.test(new URL(url).hostname) ? `Zoho-oauthtoken ${await accessToken(db, c)}` : null; } catch { return null; }
+}
+
+/** The newest Zoho calls that carry a recording link (Voice_Recording__s, filled by a telephony integration). */
+export async function recordedCalls(db: Db, c: ZohoConn, pages = 3) {
+  const out: any[] = [];
+  const fields = 'Subject,Call_Type,Call_Start_Time,Call_Duration,Call_Duration_in_seconds,Voice_Recording__s,Who_Id,What_Id,Owner,Description';
+  for (let page = 1; page <= pages; page++) {
+    const j = await zapi(db, c, 'GET', `/Calls?fields=${fields}&sort_by=Modified_Time&sort_order=desc&per_page=100&page=${page}`);
+    for (const r of j?.data || []) {
+      const rec = typeof r.Voice_Recording__s === 'string' ? r.Voice_Recording__s : r.Voice_Recording__s?.url;
+      if (rec && /^https?:\/\//i.test(String(rec).trim())) out.push({ ...r, recording_url: String(rec).trim() });
+    }
+    if (!j?.info?.more_records) break;
+  }
+  return out;
+}
+/** The caller's phone for a Zoho call: its Contact (Who_Id), else the Lead it is attached to (What_Id + $se_module). */
+export async function callPhone(db: Db, c: ZohoConn, call: any) {
+  const ref = call.Who_Id?.id ? { module: 'Contacts', id: call.Who_Id.id } : call.What_Id?.id && /lead/i.test(call.$se_module || '') ? { module: 'Leads', id: call.What_Id.id } : null;
+  if (!ref) return null;
+  const r = await getRecord(db, c, ref.module, ref.id).catch(() => null);
+  return r?.Mobile || r?.Phone || null;
+}
+
 /** Link a customer to its Zoho record; fill the customer's name and email from Zoho only where they are empty. */
 async function linkCustomer(db: Db, customerId: string, module: string, r: any) {
   const name = r.Full_Name || [r.First_Name, r.Last_Name].filter(Boolean).join(' ') || null;
@@ -188,14 +216,16 @@ export async function pushCallToZoho(db: Db, orgId: string, d: Record<string, an
         `Quality: ${d.quality_score ?? '—'}/5 · Sentiment: ${d.sentiment || '—'} · Classification: ${d.classification || '—'} · Intent: ${d.intent || '—'}`,
         `Compliance risk: ${d.compliance_risk || '—'} · Churn risk: ${d.churn_risk || '—'}`, `Full analysis & recording: ${link}`].filter((x) => x !== undefined);
       await zapi(db, c, 'POST', `/${module}/${id}/Notes`, { data: [{ Note_Title: `Call analysis — ${d.call_date || ''} — ${d.intent || 'Call'}`.slice(0, 120), Note_Content: lines.join('\n').slice(0, 30000) }] });
-      if (c.settings?.log_calls !== false) {
+      // a call that came FROM Zoho already has its Call activity there — only the Note is added
+      const fromZoho = d.call_id ? await db.one("SELECT 1 AS x FROM ingest_events e JOIN call_sources s ON s.id = e.source_id WHERE e.call_id = $1 AND s.provider = 'zoho' LIMIT 1", [d.call_id]) : null;
+      if (c.settings?.log_calls !== false && !fromZoho) {
         const start = d.started_at ? new Date(d.started_at) : new Date();
         const call: Record<string, unknown> = { Subject: `${d.direction || 'Call'} call — ${d.intent || 'analysed'}`.slice(0, 120), Call_Type: d.direction === 'Outbound' ? 'Outbound' : 'Inbound',
           Call_Start_Time: start.toISOString().replace(/\.\d{3}Z$/, '+00:00'), Call_Duration: mmss(d.duration_seconds), Description: (d.summary || '').slice(0, 2000) };
         if (module === 'Contacts') call.Who_Id = { id }; else { call.What_Id = { id }; call.$se_module = 'Leads'; }
         await zapi(db, c, 'POST', '/Calls', { data: [call] });
       }
-      status = 'ok'; detail = `Note${c.settings?.log_calls !== false ? ' + call activity' : ''} added to ${module.slice(0, -1)} ${id}`;
+      status = 'ok'; detail = `Note${c.settings?.log_calls !== false && !fromZoho ? ' + call activity' : ''} added to ${module.slice(0, -1)} ${id}`;
     }
   } catch (e) { detail = e instanceof Error ? e.message : String(e); }
   await db.q("INSERT INTO crm_sync_log (org_id, connection_id, direction, event, status, records, detail) VALUES ($1,$2,'outbound','zoho.call_note',$3,1,$4)", [orgId, c.id, status, detail?.slice(0, 500)]);

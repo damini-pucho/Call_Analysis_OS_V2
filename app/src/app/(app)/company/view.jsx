@@ -1,9 +1,9 @@
 'use client';
 // Company Profile — the organisation's details, industry configuration, SOP & policy documents (extracted into rules by the
 // SOP-extraction flow), the rules every call is scored against, and campaigns (call lines).
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, SlidersHorizontal, FileText, ListChecks, Megaphone, UploadCloud, RefreshCw, Trash2, Pencil, Plus, Sparkles, AlertCircle, CheckCircle2, Image as ImageIcon, PartyPopper } from 'lucide-react';
+import { Building2, SlidersHorizontal, FileText, ListChecks, Megaphone, UploadCloud, RefreshCw, Trash2, Pencil, Plus, Sparkles, AlertCircle, CheckCircle2, Image as ImageIcon, PartyPopper, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Card, Tabs, Badge, Empty, Button, Modal, Field, Input, Textarea, Select, Switch, Callout, cn } from '@/components/ui';
 import { useCan } from '@/components/providers';
@@ -101,30 +101,60 @@ function Config({ org, canEdit }) {
 function Documents({ docs, connected, canUpload }) {
   const router = useRouter(); const input = useRef(null);
   const [kind, setKind] = useState('sop'); const [title, setTitle] = useState(''); const [eff, setEff] = useState(''); const [file, setFile] = useState(null);
-  const [busy, setBusy] = useState(false); const [errs, setErrs] = useState({});
+  const [busy, setBusy] = useState(false); const [errs, setErrs] = useState({}); const [over, setOver] = useState(false);
+  // a chosen file names the document when no title was typed
+  const pick = (f) => { if (!f) return; setFile(f); setErrs((e) => ({ ...e, file: undefined })); if (!title.trim()) setTitle(f.name.replace(/.[^.]+$/, '').replace(/[_-]+/g, ' ')); };
+  const clear = () => { setFile(null); if (input.current) input.current.value = ''; };
   const upload = async () => {
     const fd = new FormData(); fd.append('kind', kind); fd.append('title', title || (file?.name || '').replace(/\.[^.]+$/, '')); if (eff) fd.append('effective_from', eff); if (file) fd.append('file', file);
     setBusy(true); const r = await uploadDocument(fd); setBusy(false);
     if (!r.ok) { setErrs(r.fields || {}); toast.error(r.message); return; }
-    toast.success(r.message); setFile(null); setTitle(''); setEff(''); setErrs({}); router.refresh();
+    toast.success(r.message); clear(); setTitle(''); setEff(''); setErrs({}); router.refresh();
   };
   const act = async (fn) => { const r = await fn(); r.ok ? toast.success(r.message) : toast.error(r.message); router.refresh(); };
+  const extracting = docs.filter((d) => d.status === 'extracting').map((d) => d.id).join(',');
+  useEffect(() => {
+    if (!extracting) return;
+    const started = Date.now();
+    const t = setInterval(() => { if (Date.now() - started > 10 * 60 * 1000) clearInterval(t); else router.refresh(); }, 4000);
+    return () => clearInterval(t);
+  }, [extracting, router]);
   return (
     <div className="space-y-4">
       {!connected && <Callout tone="warn" icon={AlertCircle} title="The SOP & policy extraction flow is not connected">Documents are stored now; rules are extracted once an admin sets WEBHOOK_SOP_EXTRACTION. Until then, add rules by hand under Scoring rules.</Callout>}
       {canUpload && (
         <Card title="Upload an SOP or policy" sub="PDF, Word, text or Markdown, up to 25 MB. The extraction flow turns it into scoring rules.">
-          <div className="grid gap-4 sm:grid-cols-[160px_1fr_180px]">
+          {/* 1 · the file */}
+          <input ref={input} type="file" accept=".pdf,.doc,.docx,.txt,.md,.rtf" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+          {!file ? (
+            <button type="button" onClick={() => input.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files?.[0]); }}
+              className={cn('flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-7 text-center transition-colors', over ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : errs.file ? 'border-bad bg-surface-2' : 'border-line-strong bg-surface-2 hover:border-[var(--accent)]')}>
+              <UploadCloud size={22} className="text-ink-3" aria-hidden />
+              <span className="text-[14px] font-medium text-ink">Choose a file or drag it here</span>
+              <span className="text-[12px] text-ink-3">PDF, Word, text or Markdown · up to 25 MB</span>
+            </button>
+          ) : (
+            <div className={cn('flex items-center gap-3 rounded-xl border bg-surface-2 px-4 py-3', errs.file ? 'border-bad' : 'border-line')}>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-ink-2"><FileText size={18} /></span>
+              <div className="min-w-0 flex-1"><div className="truncate text-[14px] font-medium text-ink">{file.name}</div><div className="text-[12px] text-ink-3">{(file.size / 1024).toFixed(0)} KB</div></div>
+              <Button size="sm" variant="ghost" onClick={() => input.current?.click()}>Change</Button>
+              <button type="button" className="icon-btn" onClick={clear} aria-label="Remove file"><X size={15} /></button>
+            </div>
+          )}
+          {errs.file && <p className="field-error mt-1.5">{errs.file}</p>}
+
+          {/* 2 · the details */}
+          <div className="mt-5 grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)_190px]">
             <Field label="Type"><Select value={kind} onChange={(e) => setKind(e.target.value)} options={[{ value: 'sop', label: 'SOP' }, { value: 'policy', label: 'Company policy' }]} /></Field>
             <Field label="Title" error={errs.title}><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Inbound call handling SOP v3" error={errs.title} /></Field>
             <Field label="Effective from"><Input type="date" value={eff} onChange={(e) => setEff(e.target.value)} /></Field>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button onClick={() => input.current?.click()}><UploadCloud size={15} />{file ? 'Change file' : 'Choose file'}</Button>
-            <input ref={input} type="file" accept=".pdf,.doc,.docx,.txt,.md,.rtf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <span className="min-w-0 flex-1 truncate text-[13px] text-ink-3">{file ? `${file.name} · ${(file.size / 1024).toFixed(0)} KB` : 'No file chosen'}</span>
-            {errs.file && <span className="field-error">{errs.file}</span>}
-            <Button variant="primary" disabled={!file} loading={busy} onClick={upload}>Upload</Button>
+
+          {/* 3 · send */}
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <p className="text-[12px] text-ink-3">Rules are extracted automatically and appear under Scoring rules.</p>
+            <Button variant="primary" disabled={!file} loading={busy} onClick={upload}><UploadCloud size={15} />Upload</Button>
           </div>
         </Card>
       )}
@@ -138,6 +168,7 @@ function Documents({ docs, connected, canUpload }) {
                   <div className="flex flex-wrap items-center gap-2"><a href={`/api/files/${d.file_id}`} className="truncate font-medium text-ink hover:underline">{d.title}</a><Badge dot={false}>{d.kind === 'sop' ? 'SOP' : 'Policy'}</Badge></div>
                   <div className="text-[12px] text-ink-3">{d.filename} · {d.uploaded_by_name || '—'} · {new Date(d.created_at).toLocaleDateString('en-GB')}{d.effective_from ? ` · effective ${d.effective_from}` : ''} · {d.rule_count} rule{d.rule_count === 1 ? '' : 's'}</div>
                   {d.status_reason && <div className="text-[12px] text-warn-text">{d.status_reason}</div>}
+                  {d.status === 'extracting' && <div className="text-[12px] text-ink-3">Reading the document and extracting rules — this updates by itself.</div>}
                   {d.summary && <p className="mt-1 text-[13px] text-ink-2">{d.summary}</p>}
                 </div>
                 <Badge>{d.status}</Badge>

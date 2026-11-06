@@ -7,7 +7,7 @@ import JSZip from 'jszip';
 import { currentUser } from '@/lib/auth';
 import { withOrg } from '@/lib/db';
 import { AUDIO_EXT } from '@/lib/files';
-import { queueRecording, sendToFlow } from '@/lib/ingest';
+import { queueRecording, sendToFlow, sendZipToFlow } from '@/lib/ingest';
 import { flowConnected } from '@/lib/flows';
 
 export const dynamic = 'force-dynamic';
@@ -46,11 +46,17 @@ export async function POST(req: NextRequest) {
 
   const batch = randomUUID();
   const results = await withOrg(u.orgId, async (db) => {
-    const out: any[] = [];
+    const out: any[] = []; const zipIds: string[] = [];
     for (const it of items) {
       const q = await queueRecording(db, u.orgId, u.id, it.name, it.data, batch);
+      if (q.duplicateOf) { out.push({ id: q.duplicateOf.id, filename: q.filename, parsed: true, status: 'duplicate', detail: `Same recording as ${q.duplicateOf.filename} — not stored or analysed again.` }); continue; }
+      if (isZip) { zipIds.push(q.callRowId); out.push({ id: q.callRowId, filename: q.filename, parsed: q.parsed.ok, status: 'queued', detail: null }); continue; }
       const r = await sendToFlow(db, u.orgId, q.callRowId);
       out.push({ id: q.callRowId, filename: q.filename, parsed: q.parsed.ok, status: r.status === 'sent' ? 'processing' : 'queued', detail: r.status === 'sent' ? null : r.detail });
+    }
+    if (zipIds.length) {   // one trigger for the whole ZIP — the flow's ZIP branch handles every recording in it
+      const r = await sendZipToFlow(db, u.orgId, u.id, file.name, buf, zipIds);
+      for (const o of out) if (zipIds.includes(o.id)) { o.status = r.status === 'sent' ? 'processing' : 'queued'; o.detail = r.status === 'sent' ? null : r.detail; }
     }
     await db.q("INSERT INTO audit_log (org_id, user_id, action, detail) VALUES ($1,$2,'calls.upload',$3)", [u.orgId, u.id, JSON.stringify({ batch, files: items.length, zip: isZip })]);
     return out;

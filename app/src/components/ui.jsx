@@ -298,7 +298,7 @@ export function Stat({ label, value, sub }) {
 }
 
 /** Simple proportional bar list (top topics, gaps…) with counts and %; each row can open its list. */
-export function BarList({ rows, total, onPick, max = 8, tone, hrefOf }) {
+export function BarList({ rows, total, onPick, max = 8, tone, hrefOf, selected }) {
   const top = rows[0]?.value || 1;
   return (
     <ul className="space-y-2.5">
@@ -309,7 +309,7 @@ export function BarList({ rows, total, onPick, max = 8, tone, hrefOf }) {
             <div className="mt-1 h-1.5 rounded-full bg-surface-2"><div className="h-full rounded-full" style={{ width: `${(r.value / top) * 100}%`, background: tone ? `var(--${tone})` : 'var(--cat-1)' }} /></div>
           </>
         );
-        return <li key={r.name}>{hrefOf ? <Link href={hrefOf(r)} className="block rounded-lg hover:opacity-80">{content}</Link> : onPick ? <button type="button" className="block w-full text-left hover:opacity-80" onClick={() => onPick(r)}>{content}</button> : content}</li>;
+        return <li key={r.name}>{hrefOf ? <Link href={hrefOf(r)} className="block rounded-lg hover:opacity-80">{content}</Link> : onPick ? <button type="button" aria-pressed={selected === r.name} className={cn('-mx-2 block w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-left transition-opacity', selected === r.name ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]' : selected ? 'opacity-45 hover:opacity-80' : 'hover:bg-surface-2')} onClick={() => onPick(r)}>{content}</button> : content}</li>;
       })}
     </ul>
   );

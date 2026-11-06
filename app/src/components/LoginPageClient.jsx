@@ -13,10 +13,9 @@ import {
   Lock,
   KeyRound,
   Eye,
-  EyeOff,
-  ChevronDown
+  EyeOff
 } from 'lucide-react';
-import { signInAction } from '@/app/actions/auth';
+import { signInAction, demoSignInAction } from '@/app/actions/auth';
 
 // Floating Mascot Component with Gaze Cursor
 const Mascot = ({
@@ -65,101 +64,9 @@ const Mascot = ({
   );
 };
 
-// Preset demo credentials list
-const DEMO_PRESETS = [
-  {
-    key: 'sahyog_admin',
-    group: 'Sahyog Wealth (BFSI)',
-    label: 'Admin · Nikhil Desai',
-    role: 'Admin',
-    email: 'admin@sahyog.demo',
-    password: 'Demo-gU2L2_bR',
-    badge: 'Admin',
-  },
-  {
-    key: 'sahyog_tl1',
-    group: 'Sahyog Wealth (BFSI)',
-    label: 'Team Leader · Meera Iyer',
-    role: 'Team Leader',
-    email: 'meera.iyer@sahyog.demo',
-    password: 'Demo-gU2L2_bR',
-    badge: 'TL',
-  },
-  {
-    key: 'sahyog_tl2',
-    group: 'Sahyog Wealth (BFSI)',
-    label: 'Team Leader · Rohit Bansal',
-    role: 'Team Leader',
-    email: 'rohit.bansal@sahyog.demo',
-    password: 'Demo-gU2L2_bR',
-    badge: 'TL',
-  },
-  {
-    key: 'sahyog_exec1',
-    group: 'Sahyog Wealth (BFSI)',
-    label: 'Executive / Agent · Dipti Shah',
-    role: 'Agent',
-    email: 'dipti.shah@sahyog.demo',
-    password: 'Demo-gU2L2_bR',
-    badge: 'Agent',
-  },
-  {
-    key: 'sahyog_exec2',
-    group: 'Sahyog Wealth (BFSI)',
-    label: 'Executive / Agent · Anurag Mehta',
-    role: 'Agent',
-    email: 'anurag.mehta@sahyog.demo',
-    password: 'Demo-gU2L2_bR',
-    badge: 'Agent',
-  },
-  {
-    key: 'nirmal_admin',
-    group: 'Nirmal Care Clinics (Healthcare)',
-    label: 'Clinic Admin · Dr. Nirmal',
-    role: 'Admin',
-    email: 'admin@nirmal.demo',
-    password: 'Demo-gU2L2_bR',
-    badge: 'Admin',
-  },
-  {
-    key: 'platform_admin',
-    group: 'Pucho Platform',
-    label: 'Platform Superadmin',
-    role: 'Platform Admin',
-    email: 'platform@pucho.ai',
-    password: 'Demo-gU2L2_bR',
-    badge: 'Superadmin',
-  },
-  {
-    key: 'v1_admin',
-    group: 'V1 Classic Demo Accounts',
-    label: 'Super Admin · V1',
-    role: 'Admin',
-    email: 'superadmin@pucho.ai',
-    password: 'Pucho@2026',
-    badge: 'V1 Admin',
-  },
-  {
-    key: 'v1_tl',
-    group: 'V1 Classic Demo Accounts',
-    label: 'Team Leader · Kavya Gohil',
-    role: 'Team Leader',
-    email: 'kavya.gohil@pucho.ai',
-    password: 'Pucho@2026',
-    badge: 'V1 TL',
-  },
-  {
-    key: 'v1_agent',
-    group: 'V1 Classic Demo Accounts',
-    label: 'Agent · Darshan Soni',
-    role: 'Agent',
-    email: 'darshan.soni@pucho.ai',
-    password: 'Pucho@2026',
-    badge: 'V1 Agent',
-  },
-];
 
-export function LoginPageClient() {
+
+export function LoginPageClient({ demoLogins = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -168,7 +75,6 @@ export function LoginPageClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedPresetKey, setSelectedPresetKey] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -179,14 +85,14 @@ export function LoginPageClient() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const performLogin = async (userEmail, userPassword) => {
+  const performLogin = async (userEmail, userPassword, demo) => {
     setLoading(true);
     setError('');
 
     const targetEmail = (userEmail || email).trim();
     const targetPassword = userPassword || password;
 
-    const res = await signInAction({
+    const res = demo ? await demoSignInAction({ persona: demo }) : await signInAction({
       email: targetEmail,
       password: targetPassword,
     });
@@ -209,40 +115,12 @@ export function LoginPageClient() {
     router.refresh();
   };
 
-  const handleDropdownSelect = (presetKey) => {
-    setSelectedPresetKey(presetKey);
-    const item = DEMO_PRESETS.find((p) => p.key === presetKey);
-    if (item) {
-      setEmail(item.email);
-      setPassword(item.password);
-      setError('');
-    }
-  };
+  // 1-Click: the server signs the demo persona in (DEMO_LOGINS) — no password is sent from here
+  const handleQuickLogin = (persona) => performLogin(null, null, persona);
 
-  const handleQuickLogin = (roleType) => {
-    if (roleType === 'admin') {
-      const acc = DEMO_PRESETS.find((p) => p.key === 'sahyog_admin');
-      setEmail(acc.email);
-      setPassword(acc.password);
-      setSelectedPresetKey(acc.key);
-      performLogin(acc.email, acc.password);
-    } else if (roleType === 'tl') {
-      const acc = DEMO_PRESETS.find((p) => p.key === 'sahyog_tl1');
-      setEmail(acc.email);
-      setPassword(acc.password);
-      setSelectedPresetKey(acc.key);
-      performLogin(acc.email, acc.password);
-    } else if (roleType === 'agent') {
-      const acc = DEMO_PRESETS.find((p) => p.key === 'sahyog_exec1');
-      setEmail(acc.email);
-      setPassword(acc.password);
-      setSelectedPresetKey(acc.key);
-      performLogin(acc.email, acc.password);
-    }
-  };
 
   return (
-    <div className="min-h-screen w-full bg-[#FAFAFF] relative flex items-center justify-center p-4 md:p-8 lg:p-12 overflow-hidden font-sans select-none">
+    <div className="min-h-screen w-full bg-[#FAFAFF] relative flex items-center justify-center p-4 md:p-8 lg:p-12 overflow-hidden select-none">
       {/* Full Screen Grid Pattern - Base */}
       <div
         className="absolute inset-0 z-0 opacity-100 pointer-events-none"
@@ -322,7 +200,7 @@ export function LoginPageClient() {
 
       <div className="w-full max-w-7xl mx-auto grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-20 relative z-10 items-center">
         {/* Left Side: Marketing & Value Proposition */}
-        <div className="text-center md:text-left space-y-4 md:space-y-8 md:pl-6 lg:pl-12">
+        <div className="text-center md:text-left space-y-4 md:space-y-8 pt-12 md:pt-0 md:pl-6 lg:pl-12">
           {/* Desktop/Tablet Logo */}
           <div className="hidden md:flex justify-start mb-6 lg:mb-12">
             <img
@@ -379,52 +257,6 @@ export function LoginPageClient() {
               <p className="text-gray-500 text-xs font-medium">Enter your credentials to access the Call Intelligence workspace.</p>
             </div>
 
-            {/* DEMO CREDENTIALS DROPDOWN */}
-            <div className="mb-4 text-left">
-              <label htmlFor="demo-selector" className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-[#7C4DFF]" />
-                  Select Demo Account
-                </span>
-                <span className="text-[10px] font-bold text-[#7C4DFF] bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
-                  Quick Fill
-                </span>
-              </label>
-              <div className="relative">
-                <select
-                  id="demo-selector"
-                  value={selectedPresetKey}
-                  onChange={(e) => handleDropdownSelect(e.target.value)}
-                  className="w-full h-11 pl-3.5 pr-10 rounded-2xl bg-purple-50/60 hover:bg-purple-50/90 border border-purple-200/90 text-xs font-bold text-gray-800 shadow-[0_2px_8px_rgba(124,77,255,0.06)] focus:outline-none focus:ring-2 focus:ring-[#7C4DFF]/30 focus:border-[#7C4DFF] transition-all cursor-pointer appearance-none"
-                >
-                  <option value="">— Choose a demo credential dropdown —</option>
-
-                  <optgroup label="Sahyog Wealth Advisors (BFSI)">
-                    <option value="sahyog_admin">Admin · Nikhil Desai (admin@sahyog.demo)</option>
-                    <option value="sahyog_tl1">Team Leader · Meera Iyer (meera.iyer@sahyog.demo)</option>
-                    <option value="sahyog_tl2">Team Leader · Rohit Bansal (rohit.bansal@sahyog.demo)</option>
-                    <option value="sahyog_exec1">Agent / Executive · Dipti Shah (dipti.shah@sahyog.demo)</option>
-                    <option value="sahyog_exec2">Agent / Executive · Anurag Mehta (anurag.mehta@sahyog.demo)</option>
-                  </optgroup>
-
-                  <optgroup label="Nirmal Care Clinics (Healthcare)">
-                    <option value="nirmal_admin">Clinic Admin · Dr. Nirmal (admin@nirmal.demo)</option>
-                  </optgroup>
-
-                  <optgroup label="Pucho Platform">
-                    <option value="platform_admin">Platform Superadmin (platform@pucho.ai)</option>
-                  </optgroup>
-
-                  <optgroup label="V1 Classic Accounts">
-                    <option value="v1_admin">Admin (superadmin@pucho.ai)</option>
-                    <option value="v1_tl">Team Leader · Kavya Gohil (kavya.gohil@pucho.ai)</option>
-                    <option value="v1_agent">Agent · Darshan Soni (darshan.soni@pucho.ai)</option>
-                  </optgroup>
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7C4DFF] pointer-events-none" />
-              </div>
-            </div>
-
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -472,7 +304,7 @@ export function LoginPageClient() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 p-1 text-gray-400 hover:text-[#7C4DFF] transition-colors cursor-pointer"
+                    className="absolute right-1.5 flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:text-[#7C4DFF] transition-colors cursor-pointer"
                     title={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -507,8 +339,8 @@ export function LoginPageClient() {
               </button>
             </form>
 
-            {/* 3 Quick-Login Credential Buttons */}
-            <div className="mt-5 pt-4 border-t border-gray-100">
+            {/* 3 Quick-Login buttons (DEMO_LOGINS only) */}
+            {demoLogins && <div className="mt-5 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between mb-2.5 text-left">
                 <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-[#7C4DFF]" />
@@ -566,7 +398,7 @@ export function LoginPageClient() {
                   </div>
                 </button>
               </div>
-            </div>
+            </div>}
 
             <p className="mt-4 text-center text-[12px] text-gray-500">
               New to Call Analysis OS?{' '}
@@ -584,7 +416,7 @@ export function LoginPageClient() {
           </p>
 
           {/* Mobile Only: Badges below form */}
-          <div className="block md:hidden text-center mt-5 space-y-2">
+          <div className="block md:hidden text-center mt-5 pb-28 space-y-2">
             <p className="text-[#4B5563] text-xs leading-relaxed max-w-xs mx-auto font-medium">
               Transform your call recordings into actionable intelligence with AI scoring across 15 KPIs and 7 SOPs.
             </p>

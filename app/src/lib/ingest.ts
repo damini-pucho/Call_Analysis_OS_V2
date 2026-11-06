@@ -2,9 +2,10 @@
 // to the call-processing flow; the flow's write-back lands in applyCallResult(). Deterministic work (filename parsing,
 // dedupe, customer linking, repeat-call detection, notifications) is code; the flow does only STT and the model's words.
 import 'server-only';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { Db } from './db';
-import { saveFile, signedFileUrl } from './files';
+import { saveFile, signedFileUrl, readStored, safeName, deleteFile } from './files';
 import { callFlow, companyContext } from './flows';
 import { notify, managersOf } from './notify';
 import { dispatchCrm, normMobile } from './crm';
@@ -33,6 +34,13 @@ async function linkCustomer(db: Db, orgId: string, mobile: string | null) {
 }
 
 export async function queueRecording(db: Db, orgId: string, userId: string | null, filename: string, data: Buffer, batch: string | null) {
+  // the same recording (same bytes) under another name is a duplicate: it is neither stored nor analysed twice.
+  // Re-uploading under the same filename still replaces that call (below).
+  const sha = createHash('sha256').update(data).digest('hex');
+  const dup = await db.one<{ id: string; filename: string }>(
+    'SELECT c.id, c.filename FROM calls c JOIN files f ON f.id = c.audio_file_id WHERE c.org_id = $1 AND f.sha256 = $2 AND lower(c.filename) <> lower($3) LIMIT 1',
+    [orgId, sha, safeName(filename)]);
+  if (dup) return { duplicateOf: dup, callRowId: null, fileId: null, filename: safeName(filename), parsed: parseFilename(safeName(filename)) };
   const f = await saveFile(db, orgId, userId, 'recording', filename, data);
   const p = parseFilename(f.filename);
   let agentName: string | null = null; let direction: string | null = null;
@@ -50,7 +58,8 @@ export async function queueRecording(db: Db, orgId: string, userId: string | nul
   }
   const customerId = await linkCustomer(db, orgId, p.ok ? p.mobile : null);
   const callId = p.ok && p.leadId ? p.leadId : f.id.slice(0, 8).toUpperCase();
-  // re-uploading the same recording replaces its row (V1 deleted by filename before re-upload)
+  // re-uploading the same recording replaces its row (V1 deleted by filename before re-upload) and its old stored file
+  const prev = await db.one<{ audio_file_id: string | null }>('SELECT audio_file_id FROM calls WHERE org_id = $1 AND lower(filename) = lower($2)', [orgId, f.filename]);
   const row = await db.one<{ id: string }>(
     `INSERT INTO calls (org_id, call_id, filename, call_date, agent_code, agent_name, mobile_number, customer_id, campaign, coaching_flag, direction, audio_file_id, upload_batch, status)
      VALUES ($1,$2,$3,COALESCE($4::date, current_date),$5,$6,$7,$8,$9,$10,$11,$12,$13,'queued')
@@ -59,7 +68,8 @@ export async function queueRecording(db: Db, orgId: string, userId: string | nul
      RETURNING id`,
     [orgId, callId, f.filename, p.ok ? p.date : null, p.ok ? p.agentCode || null : null, agentName, p.ok ? p.mobile || null : null, customerId,
      p.ok ? p.campaign || null : null, p.ok ? p.coachingFlag : null, direction, f.id, batch]);
-  return { callRowId: row!.id, fileId: f.id, filename: f.filename, parsed: p };
+  if (prev?.audio_file_id && prev.audio_file_id !== f.id) await deleteFile(db, orgId, prev.audio_file_id);
+  return { duplicateOf: null, callRowId: row!.id, fileId: f.id, filename: f.filename, parsed: p };
 }
 
 export async function sendToFlow(db: Db, orgId: string, callRowId: string) {
@@ -67,13 +77,31 @@ export async function sendToFlow(db: Db, orgId: string, callRowId: string) {
   if (!c?.audio_file_id) return { status: 'failed' as const, detail: 'No recording stored for this call.' };
   const agents = await db.q('SELECT agent_code, agent_name FROM agents WHERE org_id = $1 AND is_active', [orgId]);
   const url = signedFileUrl(c.audio_file_id);
+  // the existing V1 Studio flow reads the recording from an uploaded file (as V1 Upload sends it), so it needs no public file URL
+  const multipart = (process.env.WEBHOOK_CALL_PROCESSING_BODY || '').trim().toLowerCase() === 'multipart';
+  const f = multipart ? await db.one<{ filename: string; mime: string; storage_path: string }>('SELECT filename, mime, storage_path FROM files WHERE id = $1', [c.audio_file_id]) : null;
+  const file = f ? { field: 'recording', name: f.filename, mime: f.mime, data: await readStored(f.storage_path) } : undefined;
   const r = await callFlow(db, orgId, 'call_processing', c.id, {
-    call_row_id: c.id, filename: c.filename, recording: url, audio_url: url, agent_code: c.agent_code, agent_name: c.agent_name,
+    call_row_id: c.id, filename: c.filename, recording: file ? undefined : url, audio_url: file ? undefined : url, agent_code: c.agent_code, agent_name: c.agent_name,
     mobile_number: c.mobile_number, call_id: c.call_id, call_date: c.call_date ? new Date(c.call_date).toISOString().slice(0, 10).replace(/-/g, '') : null,
     campaign: c.campaign, coaching_flag: c.coaching_flag, direction: c.direction, agents, company_context: await companyContext(db, orgId),
-  });
+  }, file);
   if (r.status === 'sent') await db.q("UPDATE calls SET status = 'processing', status_reason = NULL, sent_to_flow_at = now() WHERE id = $1", [c.id]);
   else await db.q("UPDATE calls SET status = 'queued', status_reason = $2 WHERE id = $1", [c.id, r.detail]);
+  return r;
+}
+
+/** A ZIP goes to the call-processing flow as ONE trigger, the way V1 Upload sends it (filename + zip_url): the flow's own ZIP
+ *  branch unzips it, analyses every recording and posts each result back, matched by filename. The calls were already created
+ *  from the same ZIP, so they are listed and playable while the flow works. */
+export async function sendZipToFlow(db: Db, orgId: string, userId: string | null, zipName: string, data: Buffer, callRowIds: string[]) {
+  const z = await saveFile(db, orgId, userId, 'zip', zipName, data);
+  const url = signedFileUrl(z.id);
+  const r = await callFlow(db, orgId, 'call_processing', z.id, {
+    filename: z.filename, recording: url, zip_url: url, is_zip: 'true', recordings: callRowIds.length, company_context: await companyContext(db, orgId),
+  });
+  if (r.status === 'sent') await db.q("UPDATE calls SET status = 'processing', status_reason = NULL, sent_to_flow_at = now() WHERE id = ANY($1) AND org_id = $2", [callRowIds, orgId]);
+  else await db.q("UPDATE calls SET status = 'queued', status_reason = $3 WHERE id = ANY($1) AND org_id = $2", [callRowIds, orgId, r.detail]);
   return r;
 }
 
@@ -110,8 +138,11 @@ export async function applyCallResult(db: Db, r: z.infer<typeof CallResult>) {
   const orgId = r.org_id;
   const existing = r.call_row_id
     ? await db.one<any>('SELECT id, agent_code, mobile_number, customer_id FROM calls WHERE id = $1 AND org_id = $2', [r.call_row_id, orgId])
-    : r.filename ? await db.one<any>('SELECT id, agent_code, mobile_number, customer_id FROM calls WHERE org_id = $1 AND lower(filename) = lower($2)', [orgId, r.filename]) : null;
+    : r.filename ? await db.one<any>('SELECT id, agent_code, mobile_number, customer_id FROM calls WHERE org_id = $1 AND lower(filename) = lower($2)', [orgId, safeName(r.filename)]) : null;   // a ZIP entry may carry a folder path
   if (!existing) return { ok: false as const, code: 404, message: 'No call with that call_row_id / filename in this organisation.' };
+  // a call that arrived from a dialer or Zoho: its event log shows the outcome of the analysis too
+  await db.q("UPDATE ingest_events SET status = $2, detail = $3, updated_at = now() WHERE call_id = $1 AND org_id = $4 AND status IN ('queued','processing')",
+    [existing.id, r.status === 'processed' ? 'processed' : r.status === 'skipped' ? 'skipped' : 'failed', r.status === 'processed' ? null : (r.status_reason || null), orgId]);
   const intel = (r.intelligence && typeof r.intelligence === 'object' && !Array.isArray(r.intelligence)) ? r.intelligence : {};
   const arr = (v: unknown) => (Array.isArray(v) ? v : []);
   const dur = r.duration_seconds ?? secondsOf(r.duration);
@@ -121,6 +152,9 @@ export async function applyCallResult(db: Db, r: z.infer<typeof CallResult>) {
     const prior = await db.one<{ n: number }>("SELECT count(*)::int n FROM calls WHERE org_id = $1 AND customer_id = $2 AND id <> $3 AND created_at > now() - interval '7 days'", [orgId, customerId, existing.id]);
     intel.repeat_caller = (prior?.n ?? 0) > 0;
   }
+  // the analysis says who the caller is (Investor / Partner …): that is the customer's segment unless someone set one already
+  if (customerId && typeof intel.customer_type === 'string' && intel.customer_type.trim())
+    await db.q('UPDATE customers SET segment = COALESCE(segment, $2), updated_at = now() WHERE id = $1 AND org_id = $3', [customerId, intel.customer_type.trim().slice(0, 60), orgId]);
   // the organisation's own agent record names the agent (the V1 formatter falls back to a built-in name map)
   await db.q(`UPDATE calls SET status = $3, status_reason = $4, agent_code = COALESCE($5, agent_code),
       agent_name = COALESCE((SELECT a.agent_name FROM agents a WHERE a.org_id = $2 AND a.agent_code = COALESCE($5, calls.agent_code)), $6, agent_name),

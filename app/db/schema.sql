@@ -433,3 +433,11 @@ CREATE TABLE IF NOT EXISTS ingest_events (
 );
 CREATE INDEX IF NOT EXISTS ingest_events_org_idx ON ingest_events (org_id, created_at DESC);
 ALTER TABLE ingest_events ADD COLUMN IF NOT EXISTS mapped jsonb;   -- the normalised fields (recording URL, numbers, times) used to process / retry
+
+-- ── v2.2: Zoho CRM call recordings arrive through the same source → event → queue → call-processing flow as a dialer ──
+ALTER TABLE call_sources DROP CONSTRAINT IF EXISTS call_sources_provider_check;
+ALTER TABLE call_sources ADD CONSTRAINT call_sources_provider_check
+  CHECK (provider IN ('generic','exotel','ozonetel','smartflo','knowlarity','myoperator','zoho'));
+ALTER TABLE ingest_events DROP CONSTRAINT IF EXISTS ingest_events_status_check;
+ALTER TABLE ingest_events ADD CONSTRAINT ingest_events_status_check
+  CHECK (status IN ('received','downloading','queued','processing','processed','skipped','failed'));

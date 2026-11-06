@@ -10,14 +10,14 @@ import { saveSource, rotateSourceToken, deleteSource, retryEvent } from '@/app/a
 
 const MAP_FIELDS = [['call_id', 'Call ID', true], ['recording_url', 'Recording URL', true], ['agent', 'Agent (extension / number / login)', true], ['customer_number', 'Customer number', true],
   ['direction', 'Direction', false], ['started_at', 'Start time', false], ['duration', 'Duration', false], ['campaign', 'Campaign', false]];
-const STATUS_LABEL = { received: 'Received', downloading: 'Downloading', queued: 'Queued', processing: 'Analysing', skipped: 'Skipped', failed: 'Failed' };
+const STATUS_LABEL = { received: 'Received', downloading: 'Downloading', queued: 'Queued', processing: 'Analysing', processed: 'Analysed', skipped: 'Skipped', failed: 'Failed' };
 
 export default function SourcesView({ sources, events, unmapped, presets, appUrl, flowConnected, publicUrlSet }) {
   const router = useRouter();
   const [edit, setEdit] = useState(null); const [shown, setShown] = useState(null);
   const act = async (fn) => { const r = await fn(); if (r.ok) { toast.success(r.message); if (r.data?.token) setShown(r.data); } else toast.error(r.message); router.refresh(); };
   const url = (id, token) => `${appUrl}/api/ingest/${id}?token=${token}`;
-  const pname = (k) => presets.find((p) => p.key === k)?.label || k;
+  const pname = (k) => (k === 'zoho' ? 'Zoho CRM' : presets.find((p) => p.key === k)?.label || k);
   return (
     <div className="space-y-5">
       <PageHeader title="Dialer integration" sub="Connect your calling platform so every recorded call lands here and is analysed automatically — no manual upload."
@@ -48,11 +48,12 @@ export default function SourcesView({ sources, events, unmapped, presets, appUrl
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2"><span className="font-medium text-ink">{s.name}</span><Badge dot={false}>{pname(s.provider)}</Badge><Badge tone={s.is_active ? 'ok' : null}>{s.is_active ? 'Active' : 'Paused'}</Badge>{s.has_auth && <Badge dot={false} tone="info">Download auth set</Badge>}</div>
                   <div className="text-[12px] text-ink-3">{s.events} event(s){s.failed ? ` · ${s.failed} failed` : ''} · last {s.last_event_at ? new Date(s.last_event_at).toLocaleString('en-GB') : 'never'}{s.default_campaign ? ` · campaign ${s.default_campaign}` : ''}</div>
-                  <code className="mt-1 block break-all text-[12px] text-ink-3">{appUrl}/api/ingest/{s.id}?token=••••••</code>
+                  {s.provider === 'zoho' ? <div className="mt-1 text-[12px] text-ink-3">Recordings are pulled from Zoho CRM — manage it under <Link href="/crm" className="font-medium underline underline-offset-2">CRM integration</Link>.</div>
+                    : <code className="mt-1 block break-all text-[12px] text-ink-3">{appUrl}/api/ingest/{s.id}?token=••••••</code>}
                 </div>
                 <div className="flex gap-1">
-                  <button className="icon-btn" onClick={() => setEdit(s)} aria-label="Edit source"><Pencil size={15} /></button>
-                  <button className="icon-btn" onClick={() => confirm('Issue a new webhook URL? The current one stops working immediately.') && act(() => rotateSourceToken({ id: s.id }))} aria-label="New webhook URL"><KeyRound size={15} /></button>
+                  {s.provider !== 'zoho' && <button className="icon-btn" onClick={() => setEdit(s)} aria-label="Edit source"><Pencil size={15} /></button>}
+                  {s.provider !== 'zoho' && <button className="icon-btn" onClick={() => confirm('Issue a new webhook URL? The current one stops working immediately.') && act(() => rotateSourceToken({ id: s.id }))} aria-label="New webhook URL"><KeyRound size={15} /></button>}
                   <button className="icon-btn" onClick={() => confirm(`Remove ${s.name}? Calls already received stay.`) && act(() => deleteSource({ id: s.id }))} aria-label="Delete source"><Trash2 size={15} /></button>
                 </div>
               </li>

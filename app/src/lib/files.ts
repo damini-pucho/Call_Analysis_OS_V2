@@ -3,7 +3,7 @@
 // HMAC-signed link; people fetch it through their session.
 import 'server-only';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { mkdir, writeFile, readFile, stat } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, stat, unlink } from 'node:fs/promises';
 import { join, resolve, extname } from 'node:path';
 import type { Db } from './db';
 
@@ -29,6 +29,19 @@ export async function saveFile(db: Db, orgId: string, userId: string | null, kin
   await db.q('INSERT INTO files (id, org_id, kind, filename, mime, size_bytes, sha256, storage_path, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
     [id, orgId, kind, clean, mimeOf(clean), data.length, sha, rel, userId]);
   return { id, filename: clean, size: data.length };
+}
+
+export async function deleteFile(db: Db, orgId: string, fileId: string) {
+  const f = await db.one<{ id: string; storage_path: string }>(
+    'SELECT id, storage_path FROM files WHERE id = $1 AND org_id = $2', [fileId, orgId]);
+  if (!f) return false;
+  await db.q('DELETE FROM files WHERE id = $1 AND org_id = $2', [fileId, orgId]);
+  try {
+    await unlink(filePath(f.storage_path));
+  } catch (err) {
+    console.warn('Could not remove file on disk:', err);
+  }
+  return true;
 }
 
 export function filePath(storagePath: string) {

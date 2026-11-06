@@ -37,6 +37,14 @@ export async function POST(req: NextRequest) {
       await db.q("UPDATE company_documents SET status = 'failed', status_reason = $2 WHERE id = $1", [doc.id, p.data.status_reason || 'Extraction failed']);
       return 0;
     }
+    // an empty result (a retried or second run that found nothing) never wipes rules already extracted for this document
+    if (!rules.length) {
+      const had = await db.one<{ n: number }>("SELECT count(*)::int n FROM sop_rules WHERE org_id = $1 AND document_id = $2 AND source = 'extracted'", [org.id, doc.id]);
+      await db.q("UPDATE company_documents SET status = 'extracted', status_reason = $2, extracted_at = now() WHERE id = $1",
+        [doc.id, had?.n ? null : 'No rules found in this document.']);
+      await db.q("INSERT INTO flow_runs (org_id, flow, ref_id, status, detail) VALUES ($1,'sop_extraction',$2,'completed',$3)", [org.id, doc.id, had?.n ? `0 rules returned — kept the ${had.n} already extracted` : '0 rules']);
+      return had?.n ?? 0;
+    }
     await db.q("DELETE FROM sop_rules WHERE org_id = $1 AND document_id = $2 AND source = 'extracted'", [org.id, doc.id]);
     let i = 0;
     for (const r of rules) {
