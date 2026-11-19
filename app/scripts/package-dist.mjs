@@ -121,6 +121,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
+# recordings and documents; mount a volume here so they survive restarts
+ENV STORAGE_DIR=/app/storage
 
 COPY --chown=nextjs:nodejs dist/ ./
 COPY nginx.conf /etc/nginx/http.d/call-analysis.conf
@@ -129,7 +131,8 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN sed -i 's/\\r$//' /etc/nginx/http.d/call-analysis.conf /usr/local/bin/docker-entrypoint.sh \\
   && chmod +x /usr/local/bin/docker-entrypoint.sh \\
   && rm -f .env .env.local .env.production .env.production.local \\
-  && nginx -t
+  && nginx -t \\
+  && mkdir -p /app/storage && chown nextjs:nodejs /app/storage
 
 EXPOSE 80 3000
 

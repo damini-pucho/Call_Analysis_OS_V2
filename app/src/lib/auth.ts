@@ -125,7 +125,7 @@ export async function signIn(email: string, password: string): Promise<{ ok: tru
     const r = await db.one<any>(`${USER_SQL} WHERE lower(u.email) = $1`, [e]);
     const pw = await db.one<{ password_hash: string; is_active: boolean }>('SELECT password_hash, is_active FROM users WHERE lower(email) = $1', [e]);
     if (!r || !pw || !pw.is_active || r.org_status !== 'active') { await dummyVerify(password); return { ok: false, message: 'Email or password is incorrect.' }; }
-    const valid = (await checkPassword(pw.password_hash, password)); // TEMP-TUNNEL-TEST: || password === 'Demo-gU2L2_bR' || password === 'Pucho@2026';
+    const valid = await checkPassword(pw.password_hash, password);
     if (!valid) return { ok: false, message: 'Email or password is incorrect.' };
     await db.q('DELETE FROM rate_limits WHERE key = $1', [`signin:${e}`]);
     await db.q('UPDATE users SET last_login_at = now(), failed_logins = 0 WHERE id = $1', [r.id]);

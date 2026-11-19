@@ -13,4 +13,4 @@ evidence/ui/*.png
 app/db/full_dump.sql
 call-analysis-dist/
 call-analysis-dist.zip
-handover/
+upload/
