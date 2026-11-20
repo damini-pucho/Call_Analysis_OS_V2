@@ -136,18 +136,31 @@ export async function signIn(email: string, password: string): Promise<{ ok: tru
 }
 
 // ── demo logins (1-Click on the sign-in page) ────────────────────────────────────────────────────────────────────────
-// Only with DEMO_LOGINS=true, and never against the portal's database (DB_HOST): the persona is signed in on the server, so no
-// demo password is ever sent to the browser. The page shows names only.
+// 1-Click demo sign-in: the persona is signed in on the server, so no demo password is ever sent to the browser. The page shows
+// names only.
 export const DEMO_PERSONAS = {
   admin: { email: 'admin@sahyog.demo', label: 'Admin', name: 'Nikhil Desai' },
   tl: { email: 'meera.iyer@sahyog.demo', label: 'Team Lead', name: 'Meera Iyer' },
   agent: { email: 'dipti.shah@sahyog.demo', label: 'Agent', name: 'Dipti Shah' },
 } as const;
 export type DemoPersona = keyof typeof DEMO_PERSONAS;
-export const demoLoginsOn = () => process.env.DEMO_LOGINS === 'true' && !process.env.DB_HOST;
+// DEMO_LOGINS=true turns it on (local or a demo deployment). Only these invented *.demo accounts of the demo organisation can be
+// signed in this way, so a real organisation on the same database is never reachable without its password.
+export const demoLoginsOn = () => process.env.DEMO_LOGINS === 'true';
+/** The demo personas that actually exist (active, in an active organisation) — the login page shows only these. */
+export async function demoPersonasAvailable(): Promise<DemoPersona[]> {
+  if (!demoLoginsOn()) return [];
+  const byEmail = Object.fromEntries(Object.entries(DEMO_PERSONAS).map(([k, p]) => [p.email, k as DemoPersona]));
+  try {
+    const rows = await withPlatform((db) => db.q<{ email: string }>(
+      "SELECT lower(u.email) AS email FROM users u JOIN organizations o ON o.id = u.org_id WHERE u.is_active AND o.status = 'active' AND lower(u.email) = ANY($1)",
+      [Object.keys(byEmail)]));
+    return (Object.keys(DEMO_PERSONAS) as DemoPersona[]).filter((k) => rows.some((r) => byEmail[r.email] === k));
+  } catch { return []; }
+}
 export async function demoSignIn(persona: DemoPersona): Promise<{ ok: true; mustChange: boolean } | { ok: false; message: string }> {
   if (!demoLoginsOn()) return { ok: false, message: 'Demo sign-in is not available on this deployment.' };
-  const p = DEMO_PERSONAS[persona]; if (!p) return { ok: false, message: 'Unknown demo account.' };
+  const p = DEMO_PERSONAS[persona]; if (!p || !p.email.endsWith('.demo')) return { ok: false, message: 'Unknown demo account.' };
   return withPlatform(async (db) => {
     const r = await db.one<any>(`${USER_SQL} WHERE lower(u.email) = $1 AND u.is_active`, [p.email]);
     if (!r || r.org_status !== 'active') return { ok: false, message: 'This demo account is not set up on this database.' };

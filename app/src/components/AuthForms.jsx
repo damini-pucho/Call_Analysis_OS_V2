@@ -25,7 +25,7 @@ function Password({ value, onChange, error, autoComplete, id = 'password', label
 export function BrandSide({ title, sub }) {
   return (
     <div className="hidden flex-col justify-center gap-6 md:flex">
-      <img src="/brand/pucho-logo.png" alt="Pucho.ai" className="h-8 w-auto self-start dark:invert" />
+      <img src="/brand/pucho_logo_official.png" alt="Pucho.ai" className="h-8 w-auto self-start object-contain" />
       <div className="label" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>Call Analysis OS · Built on Pucho.ai</div>
       <h1 className="text-[44px] font-semibold leading-[1.05] tracking-[-0.02em] text-ink lg:text-[56px]">{title}</h1>
       <p className="max-w-md text-[15px] leading-relaxed text-ink-3">{sub}</p>

@@ -66,7 +66,8 @@ const Mascot = ({
 
 
 
-export function LoginPageClient({ demoLogins = false }) {
+/** @param {{ demoPersonas?: string[] }} props */
+export function LoginPageClient({ demoPersonas = [] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -339,8 +340,8 @@ export function LoginPageClient({ demoLogins = false }) {
               </button>
             </form>
 
-            {/* 3 Quick-Login buttons (DEMO_LOGINS only) */}
-            {demoLogins && <div className="mt-5 pt-4 border-t border-gray-100">
+            {/* Quick-Login buttons — only the demo accounts that exist on this database (DEMO_LOGINS) */}
+            {demoPersonas.length > 0 && <div className="mt-5 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between mb-2.5 text-left">
                 <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-[#7C4DFF]" />
@@ -349,8 +350,9 @@ export function LoginPageClient({ demoLogins = false }) {
                 <span className="text-[10px] text-gray-400 font-bold">Select Role</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid gap-2 ${demoPersonas.length === 1 ? 'grid-cols-1' : demoPersonas.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {/* 1. Admin */}
+                {demoPersonas.includes('admin') && (
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('admin')}
@@ -364,9 +366,10 @@ export function LoginPageClient({ demoLogins = false }) {
                     <p className="text-[11px] font-black text-gray-900 leading-tight">Admin</p>
                     <p className="text-[9px] text-[#7C4DFF] font-bold">Nikhil Desai</p>
                   </div>
-                </button>
+                </button>)}
 
                 {/* 2. Team Leader */}
+                {demoPersonas.includes('tl') && (
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('tl')}
@@ -380,9 +383,10 @@ export function LoginPageClient({ demoLogins = false }) {
                     <p className="text-[11px] font-black text-gray-900 leading-tight">Team Lead</p>
                     <p className="text-[9px] text-blue-600 font-bold">Meera Iyer</p>
                   </div>
-                </button>
+                </button>)}
 
                 {/* 3. Agent / Executive */}
+                {demoPersonas.includes('agent') && (
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('agent')}
@@ -396,7 +400,7 @@ export function LoginPageClient({ demoLogins = false }) {
                     <p className="text-[11px] font-black text-gray-900 leading-tight">Agent</p>
                     <p className="text-[9px] text-emerald-600 font-bold">Dipti Shah</p>
                   </div>
-                </button>
+                </button>)}
               </div>
             </div>}
 
