@@ -158,6 +158,23 @@ export async function demoPersonasAvailable(): Promise<DemoPersona[]> {
     return (Object.keys(DEMO_PERSONAS) as DemoPersona[]).filter((k) => rows.some((r) => byEmail[r.email] === k));
   } catch { return []; }
 }
+/** Demo credentials for the login page's dropdown: every active *.demo account of an active organisation, with DEMO_PASSWORD
+ *  (the one password `db.mjs seed` gave all demo accounts on this database). Only with DEMO_LOGINS=true and DEMO_PASSWORD set;
+ *  it never lists a real account, and nothing is hard-coded in the browser bundle. */
+export type DemoCredential = { email: string; name: string; role: string; org: string; password: string };
+export async function demoCredentials(): Promise<DemoCredential[]> {
+  const password = process.env.DEMO_PASSWORD?.trim();
+  if (!demoLoginsOn() || !password) return [];
+  try {
+    const rows = await withPlatform((db) => db.q<{ email: string; name: string; role: string; org: string }>(
+      `SELECT lower(u.email) AS email, u.name, r.name AS role, o.name AS org
+         FROM users u JOIN organizations o ON o.id = u.org_id JOIN roles r ON r.id = u.role_id
+        WHERE u.is_active AND o.status = 'active' AND lower(u.email) LIKE '%.demo'
+        ORDER BY o.name, CASE r.scope WHEN 'all' THEN 0 WHEN 'team' THEN 1 ELSE 2 END, u.name LIMIT 20`));
+    return rows.map((r) => ({ ...r, password }));
+  } catch { return []; }
+}
+
 export async function demoSignIn(persona: DemoPersona): Promise<{ ok: true; mustChange: boolean } | { ok: false; message: string }> {
   if (!demoLoginsOn()) return { ok: false, message: 'Demo sign-in is not available on this deployment.' };
   const p = DEMO_PERSONAS[persona]; if (!p || !p.email.endsWith('.demo')) return { ok: false, message: 'Unknown demo account.' };
