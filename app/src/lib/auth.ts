@@ -136,50 +136,65 @@ export async function signIn(email: string, password: string): Promise<{ ok: tru
 }
 
 // ── demo logins (1-Click on the sign-in page) ────────────────────────────────────────────────────────────────────────
-// 1-Click demo sign-in: the persona is signed in on the server, so no demo password is ever sent to the browser. The page shows
-// names only.
+// ── Demo logins (DEMO_LOGINS=true) ─────────────────────────────────────────────────────────────────────────────────────────
+// Three fixed accounts, one per role, all in the demo organisation (Sahyog Wealth Advisors, slug sahyog-wealth): the login page
+// offers them as 1-Click buttons and in the "Demo credentials" dropdown. They take over the seeded demo people (Nikhil Desai,
+// Meera Iyer, Dipti Shah) so their calls, team and training stay linked. An account with one of these emails in any OTHER
+// organisation, or listed in PLATFORM_ADMIN_EMAILS, is a real account and is never touched or offered.
+export const DEMO_ORG_SLUG = 'sahyog-wealth';
 export const DEMO_PERSONAS = {
-  admin: { email: 'admin@sahyog.demo', label: 'Admin', name: 'Nikhil Desai' },
-  tl: { email: 'meera.iyer@sahyog.demo', label: 'Team Lead', name: 'Meera Iyer' },
-  agent: { email: 'dipti.shah@sahyog.demo', label: 'Agent', name: 'Dipti Shah' },
+  admin: { email: 'admin@pucho.ai', password: 'admin@123', label: 'Admin', name: 'Nikhil Desai', seeded: 'admin@sahyog.demo' },
+  tl: { email: 'teamleader@pucho.ai', password: 'teamleader@123', label: 'Team Leader', name: 'Meera Iyer', seeded: 'meera.iyer@sahyog.demo' },
+  agent: { email: 'agent@pucho.ai', password: 'agent@123', label: 'Agent', name: 'Dipti Shah', seeded: 'dipti.shah@sahyog.demo' },
 } as const;
 export type DemoPersona = keyof typeof DEMO_PERSONAS;
-// DEMO_LOGINS=true turns it on (local or a demo deployment). Only these invented *.demo accounts of the demo organisation can be
-// signed in this way, so a real organisation on the same database is never reachable without its password.
-export const demoLoginsOn = () => process.env.DEMO_LOGINS === 'true';
-/** The demo personas that actually exist (active, in an active organisation) — the login page shows only these. */
-export async function demoPersonasAvailable(): Promise<DemoPersona[]> {
-  if (!demoLoginsOn()) return [];
-  const byEmail = Object.fromEntries(Object.entries(DEMO_PERSONAS).map(([k, p]) => [p.email, k as DemoPersona]));
-  try {
-    const rows = await withPlatform((db) => db.q<{ email: string }>(
-      "SELECT lower(u.email) AS email FROM users u JOIN organizations o ON o.id = u.org_id WHERE u.is_active AND o.status = 'active' AND lower(u.email) = ANY($1)",
-      [Object.keys(byEmail)]));
-    return (Object.keys(DEMO_PERSONAS) as DemoPersona[]).filter((k) => rows.some((r) => byEmail[r.email] === k));
-  } catch { return []; }
+const DEMO_KEYS = Object.keys(DEMO_PERSONAS) as DemoPersona[];
+export const demoLoginsOn = () => (process.env.DEMO_LOGINS || '').trim().replace(/^["']|["']$/g, '').toLowerCase() === 'true';
+
+/** Once per server start: gives each demo person their demo email and password (only where it differs). Returns the personas
+ *  that are ready to sign in. */
+let demoReady: Promise<DemoPersona[]> | null = null;
+export function syncDemoAccounts(): Promise<DemoPersona[]> {
+  if (!demoLoginsOn()) return Promise.resolve([]);
+  demoReady ??= withPlatform(async (db) => {
+    const org = await db.one<{ id: string }>("SELECT id FROM organizations WHERE slug = $1 AND status = 'active'", [DEMO_ORG_SLUG]);
+    if (!org) return [];
+    const ready: DemoPersona[] = [];
+    for (const k of DEMO_KEYS) {
+      const p = DEMO_PERSONAS[k];
+      if (isPlatformEmail(p.email)) { console.warn(`demo logins: ${p.email} is a platform admin — not used as a demo account`); continue; }
+      let u = await db.one<{ id: string; org_id: string; password_hash: string; must_change_password: boolean; is_active: boolean }>(
+        'SELECT id, org_id, password_hash, must_change_password, is_active FROM users WHERE lower(email) = $1', [p.email]);
+      if (u && u.org_id !== org.id) { console.warn(`demo logins: ${p.email} belongs to another organisation — left untouched`); continue; }
+      if (!u) {
+        u = await db.one<any>('SELECT id, org_id, password_hash, must_change_password, is_active FROM users WHERE org_id = $1 AND lower(email) = $2', [org.id, p.seeded]);
+        if (!u) continue;
+        await db.q('UPDATE users SET email = $2, updated_at = now() WHERE id = $1', [u.id, p.email]);
+      }
+      if (!u.is_active) continue;
+      if (u.must_change_password || !(await checkPassword(u.password_hash, p.password)))
+        await db.q('UPDATE users SET password_hash = $2, must_change_password = false, failed_logins = 0, updated_at = now() WHERE id = $1', [u.id, await hashPassword(p.password)]);
+      ready.push(k);
+    }
+    return ready;
+  }).catch((e) => { demoReady = null; console.warn('demo logins: could not prepare the demo accounts:', e instanceof Error ? e.message : e); return []; });
+  return demoReady;
 }
-/** Demo credentials for the login page's dropdown: every active *.demo account of an active organisation, with DEMO_PASSWORD
- *  (the one password `db.mjs seed` gave all demo accounts on this database). Only with DEMO_LOGINS=true and DEMO_PASSWORD set;
- *  it never lists a real account, and nothing is hard-coded in the browser bundle. */
-export type DemoCredential = { email: string; name: string; role: string; org: string; password: string };
+/** The demo personas ready to sign in — the login page shows only these. */
+export const demoPersonasAvailable = () => syncDemoAccounts();
+/** Email + password for the login page dropdown (one per role, never duplicated). */
+export type DemoCredential = { key: DemoPersona; role: string; name: string; email: string; password: string };
 export async function demoCredentials(): Promise<DemoCredential[]> {
-  const password = process.env.DEMO_PASSWORD?.trim();
-  if (!demoLoginsOn() || !password) return [];
-  try {
-    const rows = await withPlatform((db) => db.q<{ email: string; name: string; role: string; org: string }>(
-      `SELECT lower(u.email) AS email, u.name, r.name AS role, o.name AS org
-         FROM users u JOIN organizations o ON o.id = u.org_id JOIN roles r ON r.id = u.role_id
-        WHERE u.is_active AND o.status = 'active' AND lower(u.email) LIKE '%.demo'
-        ORDER BY o.name, CASE r.scope WHEN 'all' THEN 0 WHEN 'team' THEN 1 ELSE 2 END, u.name LIMIT 20`));
-    return rows.map((r) => ({ ...r, password }));
-  } catch { return []; }
+  return (await syncDemoAccounts()).map((k) => { const p = DEMO_PERSONAS[k]; return { key: k, role: p.label, name: p.name, email: p.email, password: p.password }; });
 }
 
 export async function demoSignIn(persona: DemoPersona): Promise<{ ok: true; mustChange: boolean } | { ok: false; message: string }> {
   if (!demoLoginsOn()) return { ok: false, message: 'Demo sign-in is not available on this deployment.' };
-  const p = DEMO_PERSONAS[persona]; if (!p || !p.email.endsWith('.demo')) return { ok: false, message: 'Unknown demo account.' };
+  if (!DEMO_PERSONAS[persona]) return { ok: false, message: 'Unknown demo account.' };
+  if (!(await syncDemoAccounts()).includes(persona)) return { ok: false, message: 'This demo account is not set up on this database.' };
+  const p = DEMO_PERSONAS[persona];
   return withPlatform(async (db) => {
-    const r = await db.one<any>(`${USER_SQL} WHERE lower(u.email) = $1 AND u.is_active`, [p.email]);
+    const r = await db.one<any>(`${USER_SQL} WHERE lower(u.email) = $1 AND u.is_active AND o.slug = $2`, [p.email, DEMO_ORG_SLUG]);
     if (!r || r.org_status !== 'active') return { ok: false, message: 'This demo account is not set up on this database.' };
     await db.q('UPDATE users SET last_login_at = now(), failed_logins = 0 WHERE id = $1', [r.id]);
     await createSession(db, r.id, r.org_id);

@@ -66,7 +66,7 @@ const Mascot = ({
 
 
 
-/** @param {{ demoPersonas?: string[], demoAccounts?: { email: string, name: string, role: string, org: string, password: string }[] }} props */
+/** @param {{ demoPersonas?: string[], demoAccounts?: { key: string, role: string, name: string, email: string, password: string }[] }} props */
 export function LoginPageClient({ demoPersonas = [], demoAccounts = [] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -123,7 +123,6 @@ export function LoginPageClient({ demoPersonas = [], demoAccounts = [] }) {
     const acc = demoAccounts.find((a) => a.email === value);
     if (acc) { setEmail(acc.email); setPassword(acc.password); }
   };
-  const demoOrgs = [...new Set(demoAccounts.map((a) => a.org))];
 
   // 1-Click: the server signs the demo persona in (DEMO_LOGINS) — no password is sent from here
   const handleQuickLogin = (persona) => performLogin(null, null, persona);
@@ -274,7 +273,7 @@ export function LoginPageClient({ demoPersonas = [], demoAccounts = [] }) {
               }}
               className="space-y-3.5"
             >
-              {/* Demo credentials (DEMO_LOGINS + DEMO_PASSWORD): choosing one fills the form */}
+              {/* Demo credentials (DEMO_LOGINS): choosing one fills the form with its role password */}
               {demoAccounts.length > 0 && (
                 <div className="w-full space-y-1.5 text-left">
                   <label htmlFor="demo-credentials" className="flex items-center gap-1.5 text-xs font-bold text-gray-700 tracking-wide">
@@ -288,15 +287,11 @@ export function LoginPageClient({ demoPersonas = [], demoAccounts = [] }) {
                     className="w-full h-11 px-4 rounded-2xl bg-purple-50/70 border border-purple-100 text-gray-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C4DFF]/20 focus:border-[#7C4DFF] transition-all cursor-pointer"
                   >
                     <option value="">Choose a demo account to fill in…</option>
-                    {demoOrgs.map((org) => (
-                      <optgroup key={org} label={org}>
-                        {demoAccounts.filter((a) => a.org === org).map((a) => (
-                          <option key={a.email} value={a.email}>{a.role} · {a.name} ({a.email})</option>
-                        ))}
-                      </optgroup>
+                    {demoAccounts.map((a) => (
+                      <option key={a.email} value={a.email}>{a.role} — {a.email}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500">Fills the email and password — then press Sign in.</p>
+                  <p className="text-xs text-gray-500">Fills the email and password — then press Sign in. Passwords: <span className="font-semibold text-gray-700">admin@123</span> · <span className="font-semibold text-gray-700">teamleader@123</span> · <span className="font-semibold text-gray-700">agent@123</span></p>
                 </div>
               )}
 
