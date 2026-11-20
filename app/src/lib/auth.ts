@@ -6,6 +6,7 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { hash, verify } from '@node-rs/argon2';
 import { withPlatform, withOrg, type Db } from './db';
+import { seedOrganization } from './tenant';
 
 const ARGON = { memoryCost: 19456, timeCost: 2, parallelism: 1 };
 const SESSION_DAYS = 14;
@@ -143,9 +144,9 @@ export async function signIn(email: string, password: string): Promise<{ ok: tru
 // organisation, or listed in PLATFORM_ADMIN_EMAILS, is a real account and is never touched or offered.
 export const DEMO_ORG_SLUG = 'sahyog-wealth';
 export const DEMO_PERSONAS = {
-  admin: { email: 'admin@pucho.ai', password: 'admin@123', label: 'Admin', name: 'Nikhil Desai', seeded: 'admin@sahyog.demo' },
-  tl: { email: 'teamleader@pucho.ai', password: 'teamleader@123', label: 'Team Leader', name: 'Meera Iyer', seeded: 'meera.iyer@sahyog.demo' },
-  agent: { email: 'agent@pucho.ai', password: 'agent@123', label: 'Agent', name: 'Dipti Shah', seeded: 'dipti.shah@sahyog.demo' },
+  admin: { email: 'admin@pucho.ai', password: 'admin@123', label: 'Admin', name: 'Nikhil Desai', seeded: 'admin@sahyog.demo', role: 'admin' },
+  tl: { email: 'teamleader@pucho.ai', password: 'teamleader@123', label: 'Team Leader', name: 'Meera Iyer', seeded: 'meera.iyer@sahyog.demo', role: 'team_leader' },
+  agent: { email: 'agent@pucho.ai', password: 'agent@123', label: 'Agent', name: 'Dipti Shah', seeded: 'dipti.shah@sahyog.demo', role: 'executive' },
 } as const;
 export type DemoPersona = keyof typeof DEMO_PERSONAS;
 const DEMO_KEYS = Object.keys(DEMO_PERSONAS) as DemoPersona[];
@@ -157,8 +158,18 @@ let demoReady: Promise<DemoPersona[]> | null = null;
 export function syncDemoAccounts(): Promise<DemoPersona[]> {
   if (!demoLoginsOn()) return Promise.resolve([]);
   demoReady ??= withPlatform(async (db) => {
-    const org = await db.one<{ id: string }>("SELECT id FROM organizations WHERE slug = $1 AND status = 'active'", [DEMO_ORG_SLUG]);
-    if (!org) return [];
+    let org = await db.one<{ id: string; status: string }>('SELECT id, status FROM organizations WHERE slug = $1', [DEMO_ORG_SLUG]);
+    if (!org) {   // a database without the demo organisation (e.g. a fresh deployment): create it the way sign-up does
+      org = await db.one<{ id: string; status: string }>(
+        "INSERT INTO organizations (name, slug, industry, email, city) VALUES ('Sahyog Wealth Advisors', $1, 'bfsi', $2, 'Ahmedabad') RETURNING id, status",
+        [DEMO_ORG_SLUG, DEMO_PERSONAS.admin.email]);
+      await seedOrganization(db, org!.id, 'bfsi');
+      await db.q("INSERT INTO audit_log (org_id, action, detail) VALUES ($1, 'org.demo_created', $2)", [org!.id, JSON.stringify({ by: 'DEMO_LOGINS' })]);
+      console.log('demo logins: created the demo organisation (Sahyog Wealth Advisors)');
+    }
+    if (!org || org.status !== 'active') return [];
+    const roleId = async (key: string) => (await db.one<{ id: string }>('SELECT id FROM roles WHERE org_id = $1 AND key = $2', [org!.id, key]))?.id;
+    const ids: Partial<Record<DemoPersona, string>> = {};
     const ready: DemoPersona[] = [];
     for (const k of DEMO_KEYS) {
       const p = DEMO_PERSONAS[k];
@@ -168,9 +179,25 @@ export function syncDemoAccounts(): Promise<DemoPersona[]> {
       if (u && u.org_id !== org.id) { console.warn(`demo logins: ${p.email} belongs to another organisation — left untouched`); continue; }
       if (!u) {
         u = await db.one<any>('SELECT id, org_id, password_hash, must_change_password, is_active FROM users WHERE org_id = $1 AND lower(email) = $2', [org.id, p.seeded]);
-        if (!u) continue;
-        await db.q('UPDATE users SET email = $2, updated_at = now() WHERE id = $1', [u.id, p.email]);
+        if (u) await db.q('UPDATE users SET email = $2, updated_at = now() WHERE id = $1', [u.id, p.email]);
       }
+      if (!u) {   // not in this organisation yet: add the person with their role (team leader under the admin, agent under the team leader)
+        const rid = await roleId(p.role); if (!rid) continue;
+        const reportsTo = k === 'tl' ? ids.admin ?? null : k === 'agent' ? ids.tl ?? null : null;
+        let groupId: string | null = null;
+        if (k !== 'admin') {
+          groupId = (await db.one<{ id: string }>(
+            "INSERT INTO groups (org_id, name, lead_ids) VALUES ($1, 'Demo team', $2) ON CONFLICT (org_id, name) DO UPDATE SET lead_ids = groups.lead_ids RETURNING id",
+            [org.id, ids.tl ? [ids.tl] : []]))!.id;
+        }
+        u = await db.one<any>('INSERT INTO users (org_id, email, name, password_hash, role_id, reports_to, group_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, org_id, password_hash, must_change_password, is_active',
+          [org.id, p.email, p.name, await hashPassword(p.password), rid, reportsTo, groupId]);
+        if (k === 'tl') await db.q("UPDATE groups SET lead_ids = ARRAY[$2]::uuid[] WHERE org_id = $1 AND name = 'Demo team'", [org.id, u!.id]);
+        if (k === 'agent') await db.q(`INSERT INTO agents (org_id, agent_code, agent_name, email, user_id, group_id, supervisor_id) VALUES ($1, '1011', $2, $3, $4, $5, $6)
+                                         ON CONFLICT (org_id, agent_code) DO UPDATE SET user_id = EXCLUDED.user_id, updated_at = now()`, [org.id, p.name, p.email, u!.id, groupId, reportsTo]);
+      }
+      if (!u) continue;
+      ids[k] = u.id;
       if (!u.is_active) continue;
       if (u.must_change_password || !(await checkPassword(u.password_hash, p.password)))
         await db.q('UPDATE users SET password_hash = $2, must_change_password = false, failed_logins = 0, updated_at = now() WHERE id = $1', [u.id, await hashPassword(p.password)]);
